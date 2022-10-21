@@ -37,39 +37,55 @@ int main(int argc, char *argv[])
     }
 
     file_i addition_test = {};
-    addition_test.file_dir = strndup("hello", 255);
-    addition_test.file_name = strndup("hey", 255);
+    addition_test.file_name = NULL;
+    addition_test.file_dir = NULL;
 
     file_i addition_test2 = {};
-    addition_test2.file_dir = strndup("poop", 255);
-    addition_test2.file_name = strndup("pee", 255);
+    addition_test2.file_name = NULL;
+    addition_test2.file_dir = NULL;
+    
 
-    for (int i = 2; i < argc; i++) {
-        hit_i *test = NULL;
-        substring_hash = hash(argv[i]);
-        insert_node(args, substring_hash, &addition_test);
-        test = search_node(args, substring_hash);
-        printf("Test node number pre: %ld\n", test->count);
-        
-    }
     hit_i *test = NULL;
-    insert_node(args, substring_hash, &addition_test);
-    insert_node(args, substring_hash, &addition_test2);
-    delete_node(args, substring_hash);
-    test = search_node(args, substring_hash);
 
-    while(test) {
+    test = search_node(args, hash(argv[3]));
+
+    if (test != NULL) {
+        while(test) {
         printf("Test node number post: %ld\n", test->count);
         printf("Test node dir: %s\n", test->file->file_dir);
         printf("Test node name: %s\n", test->file->file_name);
 
         test = test->next_hit;
+        }
     }
 
-    free(addition_test.file_dir);
-    free(addition_test.file_name);
-    free(addition_test2.file_dir);
-    free(addition_test2.file_name);
+    for (int i = 2; i < argc; i++) {
+        hit_i *test = NULL;
+        addition_test.substring = strndup(argv[i], 255);
+        substring_hash = hash(argv[i]);
+
+        insert_node(args, substring_hash, &addition_test);
+        test = search_node(args, substring_hash);
+        printf("Test node number pre: %ld\n", test->count);
+        
+    }
+    
+    // delete_node(args, hash(argv[3]));
+    test = search_node(args, hash(argv[3]));
+    if (test != NULL) {
+        while(test) {
+        printf("Test node number post: %ld\n", test->count);
+        printf("Test node dir: %s\n", test->file->file_dir);
+        printf("Test node name: %s\n", test->file->file_name);
+
+        test = test->next_hit;
+        }
+    }
+
+    free(addition_test.substring);
+   
+    free(addition_test2.substring);
+   
 
 EXIT:
     if (args->root_dir != NULL) {

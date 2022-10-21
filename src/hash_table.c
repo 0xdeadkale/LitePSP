@@ -82,8 +82,10 @@ int insert_node(substrings_i *hashtable, size_t key, file_i *metadata)
     node->key = key;
     node->next_hit = NULL;
 
-    file->file_dir = strndup(metadata->file_dir, 255);
-    file->file_name = strndup(metadata->file_name, 255);
+    if (metadata->file_dir != NULL)
+        file->file_dir = strndup(metadata->file_dir, 255);
+    if (metadata->file_name != NULL)
+        file->file_name = strndup(metadata->file_name, 255);
     node->file = file;
 
     index = key % hashtable->size;
@@ -113,10 +115,6 @@ int insert_node(substrings_i *hashtable, size_t key, file_i *metadata)
         hashtable->file_name_hits[index] = node;
         node->count = 1;
     }
-        
-    
-
-    
 
 END:
     return status;
@@ -135,6 +133,11 @@ hit_i *search_node(substrings_i *hashtable, size_t key)
 
     index = key % hashtable->size;
     tmp = hashtable->file_name_hits[index];
+    if (tmp == NULL)
+    {
+        puts("Node does not exist!");
+        return NULL;
+    }
 
     // Searchs for key through linked-list at the index of the hashtable.
     //
@@ -146,10 +149,7 @@ hit_i *search_node(substrings_i *hashtable, size_t key)
         }
         tmp = tmp->next_hit;
     }
-    if (NULL == tmp)
-    {
-        return NULL;
-    }
+    
     return tmp;
 }
 
@@ -228,6 +228,9 @@ void cleanup(substrings_i *hashtable)
     for (size_t i = 0; i < hashtable->size; ++i)
     {
         current_node = hashtable->file_name_hits[i];
+        if (current_node == NULL) {
+            puts("ok");
+        }
 
         do {
 

@@ -8,8 +8,9 @@
 
 typedef struct file
 {
-    char *file_dir;
-    char *file_name;  // Actual file names
+    char *substring;  // Substring to compare
+    char *file_dir;  // File directory
+    char *file_name;  // File name
 } file_i;
 
 typedef struct hit

@@ -13,6 +13,11 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <dirent.h>       // Used for dirent and DIR operations.
+#include <unistd.h>       // For a lot of functions.
+#include <limits.h>       // Defines many macro's (i.e. PATH_MAX)
+#include <sys/stat.h>     // For stat().
+
 
 /*
 #include <getopt.h>       // For cmd-line parsing.
