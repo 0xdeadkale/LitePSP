@@ -6,15 +6,8 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-// #include "includes.h"
-#include "cll.h"
-
-typedef struct args
-{
-    char *dir;
-    node_i **cll;
-
-} args_i;
+#include "includes.h"
+#include "hash_table.h"
 
 #endif /* PARSER_H */
 
