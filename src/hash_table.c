@@ -86,6 +86,7 @@ int insert_node(substrings_i *hashtable, size_t key, file_i *metadata)
         file->file_dir = strndup(metadata->file_dir, 255);
     if (metadata->file_name != NULL)
         file->file_name = strndup(metadata->file_name, 255);
+    file->substring = strndup(metadata->substring, 255);
     node->file = file;
 
     index = key % hashtable->size;

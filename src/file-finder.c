@@ -63,15 +63,19 @@ int main(int argc, char *argv[])
         hit_i *test = NULL;
         addition_test.substring = strndup(argv[i], 255);
         substring_hash = hash(argv[i]);
+        printf("argv str: %s\n", addition_test.substring);
 
         insert_node(args, substring_hash, &addition_test);
         test = search_node(args, substring_hash);
         printf("Test node number pre: %ld\n", test->count);
+        printf("Test node substring: %s\n", test->file->substring);
         
     }
+
+    read_dir(args, "test/subdir2");
     
     // delete_node(args, hash(argv[3]));
-    test = search_node(args, hash(argv[3]));
+    test = search_node(args, hash(argv[4]));
     if (test != NULL) {
         while(test) {
         printf("Test node number post: %ld\n", test->count);
@@ -81,6 +85,9 @@ int main(int argc, char *argv[])
         test = test->next_hit;
         }
     }
+
+    printf("File name: %s\n", args->file_name_hits[2]->file->file_name);
+    printf("File dir: %s\n", args->file_name_hits[2]->file->file_dir);
 
     free(addition_test.substring);
    

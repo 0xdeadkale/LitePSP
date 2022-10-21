@@ -3,14 +3,19 @@
  * @brief Provides the ability to interface with files.
  */
 
-#include "header/includes.h"
+
 #include "header/file_util.h"
-#include "header/hash_table.h"
+
 
 int read_dir(substrings_i *args, char *path) 
 {
+    for (int i = 0; i < 3; i++) {
+        printf("Cmp str: %s\n", (args->file_name_hits[i])->file->substring);
+    }
     int status = 0;
     size_t check_snprintf = 0;
+
+    printf("File dir: %s\n", path);
 
     DIR *dir_fd = NULL;
     struct dirent *dir_ptr = NULL;
@@ -29,7 +34,7 @@ int read_dir(substrings_i *args, char *path)
 
     while ((dir_ptr = readdir(dir_fd)))
     {
-        size_t name_len = 0;
+        // size_t name_len = 0;
         
         /* Store name into file_path buffer. */
         check_snprintf = snprintf(file_path, sizeof(file_path), "%s%s", directory, dir_ptr->d_name);
@@ -40,6 +45,8 @@ int read_dir(substrings_i *args, char *path)
             goto END;
         }
 
+        printf("File dir: %s\n", file_path);
+
         stat(file_path, &dir_data);
         if (S_ISDIR(dir_data.st_mode))
         {
@@ -48,9 +55,21 @@ int read_dir(substrings_i *args, char *path)
         }
         else
         {
-            if (strstr(args->file_name_hits, args->file_name_hits[4]) != NULL) {
-                args->file_name_hits[2]->file->file_dir = strndup(directory, 255);
+            printf("Cmp str before strstr: %s\n", (args->file_name_hits[2])->file->substring);
+            printf("File name before strstr: %s\n", dir_ptr->d_name);
+            printf("File dir before strstr: %s\n", file_path);
+
+            char *found = NULL;
+
+            found = strstr((args->file_name_hits[2])->file->substring, dir_ptr->d_name);
+            printf("Substring found here: %s\n", found);
+
+            if (found) {
+                puts("substring found in filename");
+                args->file_name_hits[2]->file->file_dir = strndup(path, 255);
                 args->file_name_hits[2]->file->file_name = strndup(dir_ptr->d_name, 255);
+                printf("File name: %s\n", args->file_name_hits[2]->file->file_name);
+                printf("File dir: %s\n", args->file_name_hits[2]->file->file_dir);
             }
             //is file
         }

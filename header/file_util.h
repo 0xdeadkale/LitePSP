@@ -6,6 +6,9 @@
 #ifndef FILELIB_H
 #define FILELIB_H
 
+#include "header/includes.h"
+#include "header/hash_table.h"
+
 int read_dir(substrings_i *args, char *path);
 
 /**

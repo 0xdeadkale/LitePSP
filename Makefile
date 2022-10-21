@@ -7,8 +7,9 @@ LDLIBS += -lpthread
 
 
 LIB1 = src/hash_table.c
+LIB2 = src/file_util.c
 
-BIN = src/file-finder.c build/hash_table.a
+BIN = src/file-finder.c build/hash_table.a build/file_util.a
 
 #PORT = 53673
 
@@ -23,6 +24,7 @@ setup:
 #lib will generate the librarys in the build folder.
 lib:
 	@gcc $(CFLAGS) -fpic -shared -o build/hash_table.a $(LIB1)
+	@gcc $(CFLAGS) -fpic -shared -o build/file_util.a $(LIB2)
 
 file-finder:
 	gcc $(CFLAGS) $(LDFLAGS) -o bin/file-finder $(BIN) $(LDLIBS) -lm
