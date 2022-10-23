@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     // int dir_size = strlen(argv[1]);
 
     substring_i node = {};
-    file_i initial_insert = {NULL};
+    node.file_hits = NULL;
 
     substring_i *test = NULL;
 
@@ -51,29 +51,31 @@ int main(int argc, char *argv[])
         substring_hash = hash(argv[i]);
         printf("argv str: %s\n", node.substring);
 
-        insert_node(database, substring_hash, &initial_insert);
+        insert_node(database, substring_hash, &node);
+
+        read_dir(database);
+
         test = search_node(database, substring_hash);
         printf("Test node substring: %s\n", test->substring);
+        free(node.substring);
     }
 
-    read_dir(database, "test/subdir2");
-
     // delete_node(args, hash(argv[3]));
-    test = search_node(database, hash(argv[4]));
+    /*test = search_node(database, hash(argv[4]));
     if (test != NULL)
     {
         while (test)
         {
             printf("Test node number post: %ld\n", test->count);
-            printf("Test node dir: %s\n", test->file->file_dir);
-            printf("Test node name: %s\n", test->file->file_name);
+            printf("Test node dir: %s\n", test->file_hits->file_dir);
+            printf("Test node name: %s\n", test->file_hits->file_name);
 
             test = test->next_substring;
         }
     }
 
-    printf("File name found and pulled: %s\n", database->all_substrings[2]->file->file_name);
-    printf("File dir found and pulled: %s\n", database->all_substrings[2]->file->file_dir);
+    printf("File name found and pulled: %s\n", database->all_substrings[2]->file_hits->file_name);
+    printf("File dir found and pulled: %s\n", database->all_substrings[2]->file_hits->file_dir);*/
 
 EXIT:
     if (database->root_dir != NULL)

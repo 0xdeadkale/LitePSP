@@ -5,9 +5,11 @@
 
 #include "header/file_util.h"
 
-int read_dir(database_i *database, char *path)
+int read_dir(database_i *database)
 {
-    for (int i = 0; i < 3; i++)
+    printf("database size: %ld\n", database->size);
+
+    for (int i = 0; i < database->size; i++)
     {
         printf("Cmp str: %s\n", (database->all_substrings[i])->substring);
     }
@@ -66,10 +68,10 @@ int read_dir(database_i *database, char *path)
             if (found)
             {
                 puts("substring found in filename");
-                database->all_substrings[2]->file->file_dir = strndup(path, 255);
-                database->all_substrings[2]->file->file_name = strndup(dir_ptr->d_name, 255);
-                printf("File name: %s\n", database->all_substrings[2]->file->file_name);
-                printf("File dir: %s\n", database->all_substrings[2]->file->file_dir);
+                database->all_substrings[2]->file_hits->file_dir = strndup(path, 255);
+                database->all_substrings[2]->file_hits->file_name = strndup(dir_ptr->d_name, 255);
+                printf("File name: %s\n", database->all_substrings[2]->file_hits->file_name);
+                printf("File dir: %s\n", database->all_substrings[2]->file_hits->file_dir);
             }
             // is file
         }

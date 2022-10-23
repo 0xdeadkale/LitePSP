@@ -10,7 +10,7 @@ typedef struct file
 {
     char *file_dir;  // File directory
     char *file_name; // File name
-    char *next_hit;
+    struct file *next_hit;
 } file_i;
 
 typedef struct substring
@@ -18,7 +18,7 @@ typedef struct substring
     size_t key;      // Hash generated from substring arg.
     char *substring; // Substring to compare
     size_t count;    // Number of file hits from substring
-    file_i *file;
+    file_i *file_hits;
     struct substring *next_substring;
 } substring_i;
 
@@ -31,7 +31,7 @@ typedef struct database
 
 database_i *create_hash(size_t size);
 
-int insert_node(database_i *hashtable, size_t key, file_i *data);
+int insert_node(database_i *hashtable, size_t key, substring_i *data);
 
 substring_i *search_node(database_i *hashtable, size_t key);
 
