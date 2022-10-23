@@ -8,35 +8,36 @@
 
 typedef struct file
 {
-    char *substring;  // Substring to compare
     char *file_dir;  // File directory
-    char *file_name;  // File name
+    char *file_name; // File name
+    char *next_hit;
 } file_i;
 
-typedef struct hit
+typedef struct substring
 {
-    size_t key;  // Hash generated from substring arg.
-    size_t count;  // Number of file hits from substring
+    size_t key;      // Hash generated from substring arg.
+    char *substring; // Substring to compare
+    size_t count;    // Number of file hits from substring
     file_i *file;
-    struct hit *next_hit;
-} hit_i;
+    struct substring *next_substring;
+} substring_i;
 
-typedef struct substrings
+typedef struct database
 {
-    size_t size;  /* Size of hashtable. */
+    size_t size; /* Size of hashtable. */
     char *root_dir;
-    hit_i **file_name_hits;
-} substrings_i;
+    substring_i **all_substrings;
+} database_i;
 
-substrings_i *create_hash(size_t size);
+database_i *create_hash(size_t size);
 
-int insert_node(substrings_i *hashtable, size_t key, file_i *data);
+int insert_node(database_i *hashtable, size_t key, file_i *data);
 
-hit_i *search_node(substrings_i *hashtable, size_t key);
+substring_i *search_node(database_i *hashtable, size_t key);
 
-int delete_node(substrings_i *hashtable, size_t key);
+int delete_node(database_i *hashtable, size_t key);
 
-void cleanup(substrings_i *hashtable);
+void cleanup(database_i *hashtable);
 
 size_t hash(const void *var);
 

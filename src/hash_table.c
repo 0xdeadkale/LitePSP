@@ -6,7 +6,7 @@
 #include "header/includes.h"
 #include "header/hash_table.h"
 
-substrings_i *create_hash(size_t size)
+database_i *create_hash(size_t size)
 {
     if (size < 1)
     {
@@ -16,7 +16,7 @@ substrings_i *create_hash(size_t size)
 
     // Creates hashtable.
     //
-    substrings_i *hashtable = calloc(1, sizeof(substrings_i));
+    database_i *hashtable = calloc(1, sizeof(database_i));
     if (NULL == hashtable)
     {
         perror("Hashtable Calloc failed");
@@ -26,8 +26,8 @@ substrings_i *create_hash(size_t size)
 
     // Calloc the 2D array by the number of substring args.
     //
-    hashtable->file_name_hits = (hit_i **)calloc(size, sizeof(hit_i *));
-    if (NULL == hashtable->file_name_hits)
+    hashtable->all_substrings = (substring_i **)calloc(size, sizeof(substring_i *));
+    if (NULL == hashtable->all_substrings)
     {
         perror("Array Calloc failed!\n");
         goto END;
@@ -43,13 +43,13 @@ END:
     return NULL;
 }
 
-int insert_node(substrings_i *hashtable, size_t key, file_i *metadata)
+int insert_node(database_i *hashtable, size_t key, file_i *metadata)
 {
     int status = 0;
     size_t index = 0;
 
-    hit_i *tmp = NULL;
-    hit_i *node = NULL;
+    substring_i *tmp = NULL;
+    substring_i *node = NULL;
     file_i *file = NULL;
 
     // Check if hashtable is NULL.
@@ -61,7 +61,7 @@ int insert_node(substrings_i *hashtable, size_t key, file_i *metadata)
         goto END;
     }
 
-    node = calloc(1, sizeof(hit_i));
+    node = calloc(1, sizeof(substring_i));
     if (NULL == node)
     {
         printf("Node calloc failed!\n");
@@ -80,13 +80,13 @@ int insert_node(substrings_i *hashtable, size_t key, file_i *metadata)
     // Populate key and values.
     //
     node->key = key;
-    node->next_hit = NULL;
+    node->next_substring = NULL;
 
     if (metadata->file_dir != NULL)
         file->file_dir = strndup(metadata->file_dir, 255);
     if (metadata->file_name != NULL)
         file->file_name = strndup(metadata->file_name, 255);
-    file->substring = strndup(metadata->substring, 255);
+    // file->substring = strndup(metadata->substring, 255);
     node->file = file;
 
     index = key % hashtable->size;
@@ -94,26 +94,28 @@ int insert_node(substrings_i *hashtable, size_t key, file_i *metadata)
     // If there is already a node at the index, we don't need to do anything.
     // A collision helps us since it confirms a substring already exists.
     //
-    if (hashtable->file_name_hits[index] != NULL) {
-        tmp = hashtable->file_name_hits[index];
+    if (hashtable->all_substrings[index] != NULL)
+    {
+        tmp = hashtable->all_substrings[index];
         node->count = 1;
-        
-        while (tmp->next_hit != NULL) {
-            node->count++;
-            tmp = tmp->next_hit;
-        }
-            
 
-        if(tmp->next_hit == NULL) {
+        while (tmp->next_substring != NULL)
+        {
             node->count++;
-            tmp->next_hit = node;
+            tmp = tmp->next_substring;
         }
-            
+
+        if (tmp->next_substring == NULL)
+        {
+            node->count++;
+            tmp->next_substring = node;
+        }
     }
 
     // Else, there is no node at the index. //
-    else {
-        hashtable->file_name_hits[index] = node;
+    else
+    {
+        hashtable->all_substrings[index] = node;
         node->count = 1;
     }
 
@@ -121,9 +123,9 @@ END:
     return status;
 }
 
-hit_i *search_node(substrings_i *hashtable, size_t key)
+substring_i *search_node(database_i *hashtable, size_t key)
 {
-    hit_i *tmp = NULL;
+    substring_i *tmp = NULL;
     size_t index = 0;
 
     if (NULL == hashtable)
@@ -133,7 +135,7 @@ hit_i *search_node(substrings_i *hashtable, size_t key)
     }
 
     index = key % hashtable->size;
-    tmp = hashtable->file_name_hits[index];
+    tmp = hashtable->all_substrings[index];
     if (tmp == NULL)
     {
         puts("Node does not exist!");
@@ -148,40 +150,44 @@ hit_i *search_node(substrings_i *hashtable, size_t key)
         {
             break;
         }
-        tmp = tmp->next_hit;
+        tmp = tmp->next_substring;
     }
-    
+
     return tmp;
 }
 
-int delete_node(substrings_i *hashtable, size_t key)
+int delete_node(database_i *hashtable, size_t key)
 {
     int status = 0;
     size_t index = 0;
 
-    hit_i *current_node = NULL;
-    hit_i *next_node = NULL;
+    substring_i *current_node = NULL;
+    substring_i *next_node = NULL;
 
-    if (NULL == hashtable) {
+    if (NULL == hashtable)
+    {
         puts("Hashtable does not exist!");
         status = -1;
         goto END;
     }
 
     index = key % hashtable->size;
-    current_node = hashtable->file_name_hits[index];
-    if (current_node == NULL) {
+    current_node = hashtable->all_substrings[index];
+    if (current_node == NULL)
+    {
         puts("Node does not exist!");
         status = -1;
         goto END;
     }
 
-    do {
-        if (next_node != NULL) {
+    do
+    {
+        if (next_node != NULL)
+        {
             current_node = next_node;
             next_node = NULL;
         }
-            
+
         /* Free's file struct's name and dir if memory is allocated for them. */
         free(current_node->file->file_dir);
         current_node->file->file_dir = NULL;
@@ -194,30 +200,32 @@ int delete_node(substrings_i *hashtable, size_t key)
         /**********************************************************************/
 
         /* Free's current node*/
-        if (current_node->next_hit != NULL) {
-            next_node = current_node->next_hit;
+        if (current_node->next_substring != NULL)
+        {
+            next_node = current_node->next_substring;
 
             free(current_node);
             current_node = NULL;
         }
         /* If not linked list, just free the one node. */
-        else {
+        else
+        {
             free(current_node);
 
             current_node = NULL;
             next_node = NULL;
         }
 
-    } while(current_node != NULL || next_node != NULL);
+    } while (current_node != NULL || next_node != NULL);
 
 END:
     return status;
 }
 
-void cleanup(substrings_i *hashtable)
+void cleanup(database_i *hashtable)
 {
-    hit_i *current_node = NULL;
-    hit_i *next_node = NULL;
+    substring_i *current_node = NULL;
+    substring_i *next_node = NULL;
 
     if (NULL == hashtable)
     {
@@ -228,18 +236,21 @@ void cleanup(substrings_i *hashtable)
     //
     for (size_t i = 0; i < hashtable->size; ++i)
     {
-        current_node = hashtable->file_name_hits[i];
-        if (current_node == NULL) {
+        current_node = hashtable->all_substrings[i];
+        if (current_node == NULL)
+        {
             puts("ok");
         }
 
-        do {
+        do
+        {
 
-            if (next_node != NULL) {
+            if (next_node != NULL)
+            {
                 current_node = next_node;
                 next_node = NULL;
             }
-                
+
             /* Free's file struct's name and dir if memory is allocated for them. */
             free(current_node->file->file_dir);
             current_node->file->file_dir = NULL;
@@ -251,25 +262,26 @@ void cleanup(substrings_i *hashtable)
             current_node->file = NULL;
             /**********************************************************************/
 
-            if (current_node->next_hit != NULL) {
-                next_node = current_node->next_hit;
+            if (current_node->next_substring != NULL)
+            {
+                next_node = current_node->next_substring;
 
                 free(current_node);
                 current_node = NULL;
             }
-            else {
+            else
+            {
                 free(current_node);
 
                 current_node = NULL;
                 next_node = NULL;
             }
 
-        } while(current_node != NULL || next_node != NULL);
-   
+        } while (current_node != NULL || next_node != NULL);
     }
-    
-    free(hashtable->file_name_hits);
-    hashtable->file_name_hits = NULL;
+
+    free(hashtable->all_substrings);
+    hashtable->all_substrings = NULL;
 
     free(hashtable->root_dir);
     hashtable->root_dir = NULL;
@@ -289,12 +301,12 @@ void cleanup(substrings_i *hashtable)
 size_t hash(const void *p_var)
 {
     size_t sum = 0;
-    size_t p   = 1;
+    size_t p = 1;
 
     for (const char *p_str = (const char *)p_var; *p_str; p_str++)
     {
         sum = ((*p_str - 'a' + 1) * p + sum);
-        p   = (p * PVAL);
+        p = (p * PVAL);
     }
     return sum;
 }
