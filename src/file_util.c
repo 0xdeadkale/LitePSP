@@ -70,7 +70,7 @@ int read_dir(database_i *database)
 
             char *found = NULL;
 
-            found = strstr((database->all_substrings[2])->substring, dir_ptr->d_name);
+            found = strstr(dir_ptr->d_name, (database->all_substrings[2])->substring);
 
             if (found)
             {
