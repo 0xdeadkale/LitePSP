@@ -101,6 +101,7 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
         node->substring = strndup(data->substring, 255);
         node->next_substring = NULL;
         node->file_hits = NULL;
+        node->status = 0;
         
         hashtable->all_substrings[index] = node;
     }

@@ -67,12 +67,12 @@ int main(int argc, char *argv[])
     // printf("getdtablesize: %d\n", getdtablesize());
     // printf("sysconf(_SC_OPEN_MAX): %ld\n", sysconf(_SC_OPEN_MAX));
 
-    status = read_dir(database);
+    status = thread_dispatcher(database);
     if (status != 0) {
         goto EXIT;
     }
 
-    print_node( database);
+    print_node(database);
 
     // delete_node(args, hash(argv[3]));
     /*test = search_node(database, hash(argv[4]));

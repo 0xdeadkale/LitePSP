@@ -22,7 +22,7 @@
 #include <errno.h>        // For error handling.
 
 #include <fts.h>
-
+#include <pthread.h>      // For multithreading.
 
 /*
 #include <getopt.h>       // For cmd-line parsing.

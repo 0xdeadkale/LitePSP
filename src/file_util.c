@@ -5,10 +5,48 @@
 
 #include "header/file_util.h"
 
-int read_dir(database_i *database)
+int thread_dispatcher(database_i *database) {
+
+    for (int i = 0; i < database->size; i++) {
+
+        pthread_t thread_id;
+        pthread_create(&thread_id, NULL, read_dir, (void *)database);
+        pthread_join(thread_id, NULL);
+    }
+
+    return 0;
+}
+
+void *read_dir(void *varg_p)
 {
+    // database_i *database = (database_i *)varg_p;
+
+    int index = 0;
+
+    for (int i = 0; i < ((database_i *)varg_p)->size; i++) {
+
+        
+        
+        if(((database_i *)varg_p)->all_substrings[i]->status == 0){
+
+            pthread_mutex_lock(&database_lock);
+            puts("Locked mutex");
+
+            ((database_i *)varg_p)->all_substrings[i]->status = 1;
+            printf("Job: %s\n", ((database_i *)varg_p)->all_substrings[i]->substring);
+
+            pthread_mutex_unlock(&database_lock);
+            puts("UnLocked mutex");
+
+            index = i;
+            
+            break;
+        }
     
-    char *paths[] = { database->root_dir, NULL };
+        
+    }
+
+    char *paths[] = { ((database_i *)varg_p)->root_dir, NULL };
 	
 	/* 2nd parameter: An options parameter. Must include either
 	   FTS_PHYSICAL or FTS_LOGICAL---they change how symbolic links
@@ -31,6 +69,7 @@ int read_dir(database_i *database)
 
 	while(true) // call fts_read() enough times to get each file
 	{
+
 		FTSENT *ent = fts_read(ftsp); // get next entry (could be file or directory).
 		if(ent == NULL)
 		{
@@ -53,13 +92,17 @@ int read_dir(database_i *database)
             ;
 		else if(ent->fts_info & FTS_F) // The entry is a file. 
         {
-            char *trigger = strstr(ent->fts_name, database->all_substrings[2]->substring);
+            char *trigger = strstr(ent->fts_name, ((database_i *)varg_p)->all_substrings[index]->substring);
             if(trigger) {
                 puts("---------------");
 
                 file_i file_found = {};
                 substring_i node = {};
-                node.substring = strndup(database->all_substrings[2]->substring, 255);
+            
+                pthread_mutex_lock(&database_lock);
+                puts("Locked mutex for insert");
+                
+                node.substring = strndup(((database_i *)varg_p)->all_substrings[index]->substring, 255);
 
                 file_found.file_dir = strndup(ent->fts_path, 255);
                 file_found.file_name = strndup(ent->fts_name, 255);
@@ -68,7 +111,10 @@ int read_dir(database_i *database)
                 // puts("Here");
 			    printf("File name found: %s\n", ent->fts_name);
                 printf("File dir found: %s\n", ent->fts_path);
-                insert_node(database, database->all_substrings[2]->key, &node);
+                insert_node(((database_i *)varg_p), ((database_i *)varg_p)->all_substrings[index]->key, &node);
+
+                pthread_mutex_unlock(&database_lock);
+                puts("UnLocked mutex for insert");
                 puts("---------------");
                 free(file_found.file_dir);
                 free(file_found.file_name);
@@ -83,17 +129,12 @@ int read_dir(database_i *database)
 		// print path to file after the label we printed above.
 		//printf("%s\n", ent->fts_path);
 
-		// Print our current working directory:
-		if(0) // TRY THIS: Change this to 1, try FTS_NOCHDIR option described above
-		{
-			char buf[2048];
-			char *c = getcwd(buf, 2048);
-			if(c == NULL)
-				perror("getcwd");
-			else
-				printf("current working directory: %s\n", c);
-		}
 	}
+
+    pthread_mutex_lock(&database_lock);
+    ((database_i *)varg_p)->all_substrings[index]->status = 2;
+    pthread_mutex_unlock(&database_lock);
+        
 
 	// close fts and check for error closing.
 	if(fts_close(ftsp) == -1)

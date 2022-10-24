@@ -19,6 +19,7 @@ typedef struct substring
     char *substring; // Substring to compare
     size_t count;    // Number of file hits from substring
     file_i *file_hits;
+    int status;
     struct substring *next_substring;
 } substring_i;
 
