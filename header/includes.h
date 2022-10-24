@@ -6,7 +6,8 @@
 #ifndef INCL_H
 #define INCL_H
 
-#define _DEFAULT_SOURCE // For realpath().
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,6 +18,10 @@
 #include <unistd.h>       // For a lot of functions.
 #include <limits.h>       // Defines many macro's (i.e. PATH_MAX)
 #include <sys/stat.h>     // For stat().
+
+#include <errno.h>        // For error handling.
+
+#include <fts.h>
 
 
 /*

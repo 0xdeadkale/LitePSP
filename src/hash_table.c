@@ -10,7 +10,7 @@ database_i *create_hash(size_t size)
 {
     if (size < 1)
     {
-        printf("Need a real bucket size\n");
+        puts("Need a real bucket size\n");
         goto END;
     }
 
@@ -46,16 +46,16 @@ END:
 int insert_node(database_i *hashtable, size_t key, substring_i *data)
 {
     int status = 0;
-    bool add_file = false;
     size_t index = 0;
 
-    substring_i *tmp = NULL;
+    // substring_i *node_tmp = NULL;
+    file_i *file_tmp = NULL;
+    file_i *file_tmp2 = NULL;
+
 
     substring_i *node = NULL;
     file_i *file = NULL;
 
-    // Check if hashtable is NULL.
-    //
     if (hashtable == NULL)
     {
         puts("Hashtable does not exist!");
@@ -63,14 +63,16 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
         goto END;
     }
 
+    index = key % hashtable->size;
+
     if (data->file_hits != NULL)
     {
-        printf("insert node data: %s\n", data->file_hits->file_name);
+        // printf("insert node data: %s\n", data->file_hits->file_name);
 
         file = calloc(1, sizeof(file_i));
         if (file == NULL)
         {
-            printf("File calloc failed!\n");
+            puts("File calloc failed!\n");
             status = -1;
             goto END;
         }
@@ -78,67 +80,100 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
         file->file_dir = strndup(data->file_hits->file_dir, 255);
         file->file_name = strndup(data->file_hits->file_name, 255);
         file->next_hit = NULL;
-        add_file = true;
+        // add_file = true;
 
         // node->file_hits = file;
     }
-
-    index = key % hashtable->size;
-
-    puts("Made it here");
-
-    /* A collision helps us since it confirms a substring and file hit
-     * already exists.
-     */
-    if (add_file == true)
-    {
-        puts("Adding file to node");
-        tmp = hashtable->all_substrings[index];
-        tmp->count = 1;
-
-        if (!(tmp->file_hits))
-        {
-            tmp->file_hits = file;
-            puts("Added File");
-            printf("tmp file name: %s\n", tmp->file_hits->file_name);
-        }
-        else
-        {
-            while (tmp->file_hits->next_hit != NULL)
-            {
-                puts("Transversing linked list");
-                tmp->count++;
-                tmp->file_hits = tmp->file_hits->next_hit;
-            }
-
-            if (tmp->file_hits->next_hit == NULL)
-            {
-                puts("Adding file to next file");
-                tmp->count++;
-                tmp->file_hits->next_hit = file;
-            }
-        }
-    }
-
-    // Else, there is no file hits at the index/substring. //
     else
     {
         node = calloc(1, sizeof(substring_i));
         if (NULL == node)
         {
-            printf("Node calloc failed!\n");
+            puts("Node calloc failed!\n");
             status = -1;
             goto END;
         }
 
-        node->key = key;
-        node->next_substring = NULL;
-        node->substring = strndup(data->substring, 255);
-        node->file_hits = NULL;
         puts("Adding plain old node");
-        hashtable->all_substrings[index] = node;
+
+        node->key = key;
         node->count = 0;
+        node->substring = strndup(data->substring, 255);
+        node->next_substring = NULL;
+        node->file_hits = NULL;
+        
+        hashtable->all_substrings[index] = node;
     }
+
+    // puts("Made it here");
+
+    if (file)
+    {
+        
+        puts("Adding file to node");
+        // node_tmp = hashtable->all_substrings[index];
+        //file_tmp = hashtable->all_substrings[index]->file_hits;
+
+        hashtable->all_substrings[index]->count = 1;
+
+        if (hashtable->all_substrings[index]->file_hits == NULL)
+        {
+            //printf("First file name: %s\n", hashtable->all_substrings[index]->file_hits->file_name);
+            hashtable->all_substrings[index]->file_hits = file;
+            puts("Added File");
+            printf("First file name: %s\n", hashtable->all_substrings[index]->file_hits->file_name);
+            printf("First file dir: %s\n", hashtable->all_substrings[index]->file_hits->file_dir);
+            printf("First file count: %ld\n", hashtable->all_substrings[index]->count);
+        }
+        else
+        {
+            file_tmp = hashtable->all_substrings[index]->file_hits;
+            while (file_tmp->next_hit != NULL)
+            {
+                puts("Transversing linked list");
+                printf("before file name: %s\n", file_tmp->file_name);
+                printf("before file dir: %s\n", file_tmp->file_dir);
+                printf("before file count: %ld\n", hashtable->all_substrings[index]->count);
+                hashtable->all_substrings[index]->count++;
+                file_tmp = file_tmp->next_hit;
+
+                printf("after file name: %s\n", file_tmp->file_name);
+                printf("after file dir: %s\n", file_tmp->file_dir);
+                printf("after file count: %ld\n", hashtable->all_substrings[index]->count);
+            }
+
+            
+            puts("Adding file to next file");
+            printf("1 file name: %s\n", file_tmp->file_name);
+            printf("1 file dir: %s\n", file_tmp->file_dir);
+            printf("1 file count: %ld\n", hashtable->all_substrings[index]->count);
+            hashtable->all_substrings[index]->count++;
+            file_tmp->next_hit = file;
+
+            puts("Added File");
+            
+            puts("^^^^");
+            printf("Another next file name: %s\n", file_tmp->next_hit->file_name);
+            printf("Another next file dir: %s\n",file_tmp->next_hit->file_dir);
+            printf("Another next file count: %ld\n", hashtable->all_substrings[index]->count);
+            
+        }
+
+        // DEBUG
+        file_tmp2 = hashtable->all_substrings[index]->file_hits;
+        while(file_tmp2) {
+                
+                puts("###Listing Files####");
+                printf("file name: %s\n", file_tmp2->file_name);
+                printf("file dir: %s\n", file_tmp2->file_dir);
+                puts("######");
+
+                file_tmp2 = file_tmp2->next_hit;
+            }
+    }
+
+    // Else, there is no file hits at the index/substring. //
+    
 
 END:
     return status;
@@ -253,12 +288,15 @@ void cleanup(database_i *hashtable)
         return;
     }
 
-    // Loops through and cleans up everything.
-    //
-    for (size_t i = 0; i < hashtable->size; ++i)
+    /* Loops through and cleans up everything. */ 
+    for (size_t i = 0; i < hashtable->size; i++)
     {
+        if (hashtable->all_substrings[i]->file_hits)
+            printf("Filename found 0: %s\n", hashtable->all_substrings[i]->file_hits->file_dir);
         current_node = hashtable->all_substrings[i];
+        
         printf("Deleting Node w/ substring: %s\n", current_node->substring);
+        
         if (current_node == NULL)
         {
             printf("Delete node target: %ld\n", current_node->key);
@@ -280,8 +318,9 @@ void cleanup(database_i *hashtable)
             if (current_node->file_hits != NULL && current_node->file_hits->next_hit != NULL)
             {
                 puts("Chained file detected, will loop");
-                printf("Filename found 1: %s\n", current_node->file_hits->file_name);
-                printf("Filename found: %s\n", current_node->file_hits->next_hit->file_name);
+                printf("Filename found 1: %s\n", current_node->file_hits->file_dir);
+                printf("Filename found 2: %s\n", current_node->file_hits->next_hit->file_dir);
+                //printf("Filename found 3: %s\n", current_node->file_hits->next_hit->next_hit->file_name);
 
                 next_file = current_node->file_hits->next_hit;
                 // next_node = NULL;

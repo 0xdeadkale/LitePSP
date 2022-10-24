@@ -7,110 +7,133 @@
 
 int read_dir(database_i *database)
 {
-    puts("*****************");
-    printf("database size: %ld\n", database->size);
+    
+    char *paths[] = { database->root_dir, NULL };
+	
+	/* 2nd parameter: An options parameter. Must include either
+	   FTS_PHYSICAL or FTS_LOGICAL---they change how symbolic links
+	   are handled.
+	   The 2nd parameter can also include the FTS_NOCHDIR bit (with a
+	   bitwise OR) which causes fts to skip changing into other
+	   directories. I.e., fts will call chdir() to literally cause
+	   your program to behave as if it is running into another
+	   directory until it exits that directory. See "man fts" for more
+	   information.
+	   Last parameter is a comparator which you can optionally provide
+	   to change the traversal of the filesystem hierarchy.
+	*/
+	FTS *ftsp = fts_open(paths, FTS_PHYSICAL, NULL);
+	if(ftsp == NULL)
+	{
+		perror("fts_open");
+		exit(EXIT_FAILURE);
+	}
 
-    for (int i = 0; i < database->size; i++)
-    {
-        printf("Cmp str: %s\n", (database->all_substrings[i])->substring);
-    }
-
-    printf("Root dir: %s\n", database->root_dir);
-
-    /* DEBUG */
-
-    int status = 0;
-    size_t check_snprintf = 0;
-
-    DIR *dir_fd = NULL;
-    struct dirent *dir_ptr = NULL;
-    struct stat dir_data = {0};
-
-    char directory[PATH_SIZE] = {0};
-    char file_path[PATH_SIZE] = {0};
-
-    dir_fd = opendir(database->root_dir);
-    if (NULL == dir_fd)
-    {
-        puts("[-] opendir failed: Could not open directory");
-        status = -1;
-        goto END;
-    }
-
-    while ((dir_ptr = readdir(dir_fd)))
-    {
-        // size_t name_len = 0;
-
-        file_i file_found = {};
-        substring_i node = {};
-        node.substring = strndup(database->all_substrings[2]->substring, 255);
-
-        /* Store name into file_path buffer. */
-        check_snprintf = snprintf(file_path, sizeof(file_path), "%s%s", directory, dir_ptr->d_name);
-        if (check_snprintf <= 0)
+	while(true) // call fts_read() enough times to get each file
+	{
+		FTSENT *ent = fts_read(ftsp); // get next entry (could be file or directory).
+		if(ent == NULL)
+		{
+			if(errno == 0)
+				break; // No more items, bail out of while loop
+			else
+			{
+				// fts_read() had an error.
+				perror("fts_read");
+				exit(EXIT_FAILURE);
+			}
+		}
+			
+		// Given a "entry", determine if it is a file or directory
+		if(ent->fts_info & FTS_D)   // We are entering into a directory
+			//printf("Enter dir: ");
+            ;
+		else if(ent->fts_info & FTS_DP) // We are exiting a directory
+			//printf("Exit dir:  ");
+            ;
+		else if(ent->fts_info & FTS_F) // The entry is a file. 
         {
-            puts("[-] snprintf error[3]!?");
-            status = -1;
-            goto END;
-        }
+            char *trigger = strstr(ent->fts_name, database->all_substrings[2]->substring);
+            if(trigger) {
+                puts("---------------");
 
-        // printf("File dir: %s\n", file_path);
+                file_i file_found = {};
+                substring_i node = {};
+                node.substring = strndup(database->all_substrings[2]->substring, 255);
 
-        stat(file_path, &dir_data);
-        if (S_ISDIR(dir_data.st_mode))
-        {
-            printf("dir name: %s\n", dir_ptr->d_name);
-            // Store in some buffer
-        }
-        else
-        {
-            printf("Cmp str before strstr: %s\n", (database->all_substrings[2])->substring);
-            printf("File name before strstr: %s\n", dir_ptr->d_name);
-            printf("File dir before strstr: %s\n", file_path);
-
-            char *found = NULL;
-
-            found = strstr(dir_ptr->d_name, (database->all_substrings[2])->substring);
-
-            if (found)
-            {
-                printf("Substring found here: %s\n", found);
-                file_found.file_dir = strndup(file_path, 255);
-                file_found.file_name = strndup(dir_ptr->d_name, 255);
+                file_found.file_dir = strndup(ent->fts_path, 255);
+                file_found.file_name = strndup(ent->fts_name, 255);
                 node.file_hits = &file_found;
 
-                printf("Node File name before insert: %s\n", node.file_hits->file_name);
-                printf("Node File dir before insert: %s\n", node.file_hits->file_dir);
-
+                // puts("Here");
+			    printf("File name found: %s\n", ent->fts_name);
+                printf("File dir found: %s\n", ent->fts_path);
                 insert_node(database, database->all_substrings[2]->key, &node);
-
+                puts("---------------");
                 free(file_found.file_dir);
                 free(file_found.file_name);
-                // printf("File added in database: %s\n", database->all_substrings[2]->file_hits);
+                free(node.substring);
             }
-            else
-                puts("subsring not found");
-            // is file
+                
         }
-        free(node.substring);
-    }
+		else // entry is something else
+			//printf("Other:     ");
+            ;
 
-END:
-    closedir(dir_fd);
-    puts("*****************");
-    return status;
+		// print path to file after the label we printed above.
+		//printf("%s\n", ent->fts_path);
+
+		// Print our current working directory:
+		if(0) // TRY THIS: Change this to 1, try FTS_NOCHDIR option described above
+		{
+			char buf[2048];
+			char *c = getcwd(buf, 2048);
+			if(c == NULL)
+				perror("getcwd");
+			else
+				printf("current working directory: %s\n", c);
+		}
+	}
+
+	// close fts and check for error closing.
+	if(fts_close(ftsp) == -1)
+		perror("fts_close");
+	return 0;
 }
 
-int get_attributes(char *name, struct stat *attrs)
-{
-    int status = 0;
+int print_node(database_i *database) {
 
-    status = stat(name, attrs);
-    if (status != 0)
-        perror("File stat");
+    for (size_t i = 0; i < database->size; ++i) {
 
-    return status;
+        file_i *tmp = NULL;
 
-} /* get_attributes() */
+        if (database->all_substrings[i]->file_hits) {
+
+            printf("substring: %s\n", database->all_substrings[i]->substring);
+            puts("@@@@@@@@@@@@@@@@@@");
+            printf("file name: %s\n", database->all_substrings[i]->file_hits->file_name);
+            puts("");
+            printf("file dir: %s\n", database->all_substrings[i]->file_hits->file_dir);
+            puts("");
+            puts("######");
+
+            if (database->all_substrings[i]->file_hits->next_hit) {
+                tmp = database->all_substrings[i]->file_hits->next_hit;
+            }
+
+            while(tmp) {
+                
+                printf("file name: %s\n", tmp->file_name);
+                printf("file dir: %s\n", tmp->file_dir);
+                puts("######");
+
+                tmp = tmp->next_hit;
+            }
+        }
+        puts("@@@@@@@@@@@@@@@@@@");
+    }
+
+    return 0;
+}
 
 /*** end of file ***/

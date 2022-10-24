@@ -9,6 +9,7 @@ int main(int argc, char *argv[])
 {
 
     int status = 0;
+    // int nftw_flags = 0;
     size_t substring_hash = 0;
 
     database_i *database = NULL;
@@ -22,12 +23,12 @@ int main(int argc, char *argv[])
         goto EXIT;
     }
 
-    printf("Argc count: %d\n", argc);
+    /* printf("Argc count: %d\n", argc);
 
     for (int i = 2; i < argc; i++)
     {
         printf("Search patterns: %s\n", argv[i]);
-    }
+    } */
 
     /* Create hashtable for key: substring, and value: file-hits pairs.*/
     database = create_hash(argc - 2);
@@ -40,28 +41,38 @@ int main(int argc, char *argv[])
     // TODO Transverse root directory
 
     database->root_dir = strndup(argv[1], 255);
-    printf("Dir input: %s\n", database->root_dir);
+    // printf("Dir input: %s\n", database->root_dir);
 
     // int dir_size = strlen(argv[1]);
 
     substring_i node = {};
 
-    substring_i *test = NULL;
+    //substring_i *test = NULL;
 
     for (int i = 2; i < argc; i++)
     {
         node.substring = strndup(argv[i], PATH_SIZE);
         substring_hash = hash(argv[i]);
-        printf("argv str: %s\n", node.substring);
+        // printf("argv str: %s\n", node.substring);
 
         insert_node(database, substring_hash, &node);
 
-        test = search_node(database, substring_hash);
-        printf("Test node substring: %s\n", test->substring);
+        // test = search_node(database, substring_hash);
+        // printf("Test node substring: %s\n", test->substring);
         free(node.substring);
     }
 
-    read_dir(database);
+    // long nfds = sysconf(_SC_OPEN_MAX);
+    // printf("nfds: %ld\n", nfds);
+    // printf("getdtablesize: %d\n", getdtablesize());
+    // printf("sysconf(_SC_OPEN_MAX): %ld\n", sysconf(_SC_OPEN_MAX));
+
+    status = read_dir(database);
+    if (status != 0) {
+        goto EXIT;
+    }
+
+    print_node( database);
 
     // delete_node(args, hash(argv[3]));
     /*test = search_node(database, hash(argv[4]));
