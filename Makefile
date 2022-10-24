@@ -32,7 +32,7 @@ file-finder:
 #server will generate ftp server binary in bin. 
 valgrind: lib
 	@gcc $(CFLAGS) $(LDFLAGS) -o bin/file-finder $(BIN) $(LDLIBS) -lm
-	valgrind --leak-check=full bin/file-finder test/subdir_3 aaa bbb ccc
+	valgrind --leak-check=full bin/file-finder test aaa bbb ccc
 
 clean:
 	@$(RM) -rf bin/* build/*

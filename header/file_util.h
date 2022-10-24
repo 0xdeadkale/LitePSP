@@ -9,7 +9,7 @@
 #include "header/includes.h"
 #include "header/hash_table.h"
 
-int read_dir(database_i *database, char *path);
+int read_dir(database_i *database);
 
 /**
  * @brief This function obtains the attributes of a file and prints to console.

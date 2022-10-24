@@ -49,7 +49,7 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
     bool add_file = false;
     size_t index = 0;
 
-    file_i *tmp = NULL;
+    substring_i *tmp = NULL;
 
     substring_i *node = NULL;
     file_i *file = NULL;
@@ -63,25 +63,12 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
         goto END;
     }
 
-    /* Allocate memory for node and attached file metadata*/
-    node = calloc(1, sizeof(substring_i));
-    if (NULL == node)
-    {
-        printf("Node calloc failed!\n");
-        status = -1;
-        goto END;
-    }
-    /******************************************************/
-
-    // Populate key and values.
-    //
-    node->key = key;
-    node->next_substring = NULL;
-
     if (data->file_hits != NULL)
     {
+        printf("insert node data: %s\n", data->file_hits->file_name);
+
         file = calloc(1, sizeof(file_i));
-        if (NULL == file)
+        if (file == NULL)
         {
             printf("File calloc failed!\n");
             status = -1;
@@ -90,9 +77,10 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
 
         file->file_dir = strndup(data->file_hits->file_dir, 255);
         file->file_name = strndup(data->file_hits->file_name, 255);
+        file->next_hit = NULL;
         add_file = true;
 
-        node->file_hits = file;
+        // node->file_hits = file;
     }
 
     index = key % hashtable->size;
@@ -102,29 +90,51 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
     /* A collision helps us since it confirms a substring and file hit
      * already exists.
      */
-    if (add_file == true && hashtable->all_substrings[index]->file_hits != NULL)
+    if (add_file == true)
     {
         puts("Adding file to node");
-        tmp = hashtable->all_substrings[index]->file_hits;
-        node->count = 1;
+        tmp = hashtable->all_substrings[index];
+        tmp->count = 1;
 
-        while (tmp != NULL)
+        if (!(tmp->file_hits))
         {
-            node->count++;
-            tmp = tmp->next_hit;
+            tmp->file_hits = file;
+            puts("Added File");
+            printf("tmp file name: %s\n", tmp->file_hits->file_name);
         }
-
-        if (tmp->next_hit == NULL)
+        else
         {
-            node->count++;
-            tmp->next_hit = node->file_hits;
+            while (tmp->file_hits->next_hit != NULL)
+            {
+                puts("Transversing linked list");
+                tmp->count++;
+                tmp->file_hits = tmp->file_hits->next_hit;
+            }
+
+            if (tmp->file_hits->next_hit == NULL)
+            {
+                puts("Adding file to next file");
+                tmp->count++;
+                tmp->file_hits->next_hit = file;
+            }
         }
     }
 
     // Else, there is no file hits at the index/substring. //
     else
     {
+        node = calloc(1, sizeof(substring_i));
+        if (NULL == node)
+        {
+            printf("Node calloc failed!\n");
+            status = -1;
+            goto END;
+        }
+
+        node->key = key;
+        node->next_substring = NULL;
         node->substring = strndup(data->substring, 255);
+        node->file_hits = NULL;
         puts("Adding plain old node");
         hashtable->all_substrings[index] = node;
         node->count = 0;
@@ -258,19 +268,26 @@ void cleanup(database_i *hashtable)
 
         do
         {
+            puts("Looping in delete...");
+            if (next_node != NULL)
+            {
+                puts("Assigning current node from next node");
+                current_node = next_node;
+                next_node = NULL;
+            }
+
             if (current_node->file_hits == NULL)
             {
                 puts("No file hits delete");
                 free(current_node->substring);
-                // free(current_node->file_hits);
-            }
-            else if (next_node->file_hits->next_hit != NULL)
-            {
-                current_node = next_node;
-                next_node = NULL;
+                // free(current_node->substring);
+                //  free(current_node->file_hits);
             }
             else
             {
+                puts("There's a file");
+                free(current_node->substring);
+
                 free(current_node->file_hits->file_dir);
                 current_node->file_hits->file_dir = NULL;
 
@@ -281,15 +298,18 @@ void cleanup(database_i *hashtable)
                 current_node->file_hits = NULL;
             }
 
-            if (current_node->next_substring != NULL)
+            if (current_node->file_hits != NULL && current_node->file_hits->next_hit != NULL)
             {
-                next_node = current_node->next_substring;
+                puts("Another file detected, looping");
+                next_node->file_hits = current_node->file_hits->next_hit;
+                // next_node = NULL;
 
                 free(current_node);
                 current_node = NULL;
             }
             else
             {
+                puts("No more files");
                 free(current_node);
 
                 current_node = NULL;
@@ -310,7 +330,8 @@ void cleanup(database_i *hashtable)
 }
 
 /**
- * @brief This function opens a file and returns the file handle.
+ * @brief This function generates a hash for inserting nodes
+ * into a hash table.
  * https://cp-algorithms.com/string/string-hashing.html
  *
  * @param p_var Seed number for algoithm.
