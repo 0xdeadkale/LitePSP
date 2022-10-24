@@ -246,7 +246,7 @@ END:
 void cleanup(database_i *hashtable)
 {
     substring_i *current_node = NULL;
-    substring_i *next_node = NULL;
+    file_i *next_file = NULL;
 
     if (NULL == hashtable)
     {
@@ -269,11 +269,22 @@ void cleanup(database_i *hashtable)
         do
         {
             puts("Looping in delete...");
-            if (next_node != NULL)
+
+            if (next_file != NULL)
             {
                 puts("Assigning current node from next node");
-                current_node = next_node;
-                next_node = NULL;
+                current_node->file_hits = next_file;
+                next_file = NULL;
+            }
+
+            if (current_node->file_hits != NULL && current_node->file_hits->next_hit != NULL)
+            {
+                puts("Chained file detected, will loop");
+                printf("Filename found 1: %s\n", current_node->file_hits->file_name);
+                printf("Filename found: %s\n", current_node->file_hits->next_hit->file_name);
+
+                next_file = current_node->file_hits->next_hit;
+                // next_node = NULL;
             }
 
             if (current_node->file_hits == NULL)
@@ -286,7 +297,8 @@ void cleanup(database_i *hashtable)
             else
             {
                 puts("There's a file");
-                free(current_node->substring);
+                if (next_file == NULL)
+                    free(current_node->substring);
 
                 free(current_node->file_hits->file_dir);
                 current_node->file_hits->file_dir = NULL;
@@ -298,25 +310,17 @@ void cleanup(database_i *hashtable)
                 current_node->file_hits = NULL;
             }
 
-            if (current_node->file_hits != NULL && current_node->file_hits->next_hit != NULL)
-            {
-                puts("Another file detected, looping");
-                next_node->file_hits = current_node->file_hits->next_hit;
-                // next_node = NULL;
-
-                free(current_node);
-                current_node = NULL;
-            }
-            else
-            {
+            
+            if (next_file == NULL) {
                 puts("No more files");
+
                 free(current_node);
-
                 current_node = NULL;
-                next_node = NULL;
             }
+            
+            
 
-        } while (current_node != NULL || next_node != NULL);
+        } while (current_node != NULL || next_file != NULL);
     }
 
     free(hashtable->all_substrings);
