@@ -21,11 +21,6 @@ int thread_dispatcher(database_i *database) {
         pthread_join(thread_id_workers, NULL);
     }
 
-    pthread_mutex_lock(&database_lock);
-    puts("Exit lock");
-    exit_flag = true;
-    pthread_mutex_unlock(&database_lock);
-
     pthread_join(thread_id_dumper, NULL);
     pthread_join(thread_id_user, NULL);
 
@@ -37,6 +32,11 @@ void *user_input(void *varg_p) {
     int status = 0;
     char input_buf[6] = {};
     struct pollfd input[1] = {{fd: STDIN_FILENO, events: POLLIN}};
+
+    sigset_t thread_set;
+    sigfillset(&thread_set);
+    pthread_sigmask(SIG_BLOCK, &thread_set, NULL); // Block all signals.
+
 
 
     status = fcntl(STDIN_FILENO, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);  // Set stdin to non-blocking
@@ -51,26 +51,34 @@ void *user_input(void *varg_p) {
 
     while(true) {
 
-        status = poll(input, 1, -1);  // Poll for stdin for immediate response.
-        
-        fgets(input_buf, 6, stdin);
+        memset(input_buf, 0, 6);
 
-        printf("Command entered: %s\n", input_buf);
+        status = poll(input, 1, 5000);  // Poll for stdin for immediate response.
+        
+        if (input[1].revents & POLLIN)
+            fgets(input_buf, 6, stdin);
 
         /* Commands parsed per the project's requirements */
         if (strncmp(input_buf, "Exit\n", 6) == 0) {
             pthread_mutex_lock(&database_lock);
-            puts("Exit lock");
             exit_flag = true;
             pthread_mutex_unlock(&database_lock);
+            printf("Command entered: %s\n", input_buf);
             break;
         }
         else if (strncmp(input_buf, "Dump\n", 6) == 0) {
             pthread_mutex_lock(&database_lock);
-            puts("Dump lock");
             dump_flag = true;
             pthread_mutex_unlock(&database_lock);
+            printf("Command entered: %s\n", input_buf);
         }
+        else if (strncmp(input_buf, "", 1) != 0)
+            puts("Command invalid | Enter 'Exit' or 'Dump'");
+        
+        fflush(NULL);
+
+        if (exit_flag == true)
+            break;
     }
 
 END:
@@ -91,7 +99,6 @@ void *read_dir(void *varg_p)
             goto END;
         if (dump_flag == true) {
             pthread_mutex_lock(&database_lock);
-            puts("Lock1");
             dump_flag = false;
             pthread_mutex_unlock(&database_lock);
 
@@ -101,10 +108,8 @@ void *read_dir(void *varg_p)
         if(((database_i *)varg_p)->all_substrings[i]->status == 0){
 
             pthread_mutex_lock(&database_lock);
-            puts("Status lock");
             ((database_i *)varg_p)->all_substrings[i]->status = 1;
             pthread_mutex_unlock(&database_lock);
-             puts("Status unlock");
             
             index = i;
             break;
@@ -149,7 +154,6 @@ void *read_dir(void *varg_p)
                 substring_i node = {};
             
                 pthread_mutex_lock(&database_lock);
-                puts("Insert lock");
                 
                 /* Prepare node to insert into hashtable, and chain to other nodes at hashtbale index */
                 node.substring = strndup(((database_i *)varg_p)->all_substrings[index]->substring, 255);
@@ -161,7 +165,6 @@ void *read_dir(void *varg_p)
                 insert_node(((database_i *)varg_p), ((database_i *)varg_p)->all_substrings[index]->key, &node);
 
                 pthread_mutex_unlock(&database_lock);
-                puts("Insert unlock");
                 
                 free(file_found.file_dir);
                 free(file_found.file_name);
@@ -173,10 +176,8 @@ void *read_dir(void *varg_p)
     // TODO ENUM status
 
     pthread_mutex_lock(&database_lock);
-    puts("status done lock");
     ((database_i *)varg_p)->all_substrings[index]->status = 2;
     pthread_mutex_unlock(&database_lock);
-    puts("status done unlock");
 
     if (exit_flag == true)
         goto END;
@@ -190,45 +191,28 @@ END:
 	return 0;
 }
 
-int print_substring(substring_i *substring) 
-{
-    file_i *tmp = NULL;
-
-    if (substring) {
-
-        printf("substring: %s\n", substring->substring);
-        puts("Start********************");
-        printf("file name: %s\n", substring->file_hits->file_name);
-        printf("file dir: %s\n", substring->file_hits->file_dir);
-        puts("--------------------");
-
-        if (substring->file_hits->next_hit) {
-            tmp = substring->file_hits->next_hit;
-        }
-
-        while(tmp) {
-            
-            printf("file name: %s\n", tmp->file_name);
-            printf("file dir: %s\n", tmp->file_dir);
-            puts("--------------------");
-
-            tmp = tmp->next_hit;
-        }
-    }
-    puts("End********************");
-    puts("\n");
-    
-    return 0;
-}
-
 void *print_all(void *database) 
 {
-    sleep(3);
-    puts("Made it here");
+    bool dump_contents = false;
+
     while(exit_flag != true) {
-        printf("Database size:%ld\n", ((database_i *)database)->size);
+
+        puts("Searching...\n");
 
         for (size_t i = 0; i < ((database_i *)database)->size; ++i) {
+
+            /* Logic that decides when to print to stdout*/
+            if (dump_flag == true) {
+                puts("Dump triggered");
+                dump_contents = true;
+                pthread_mutex_lock(&database_lock);
+                dump_flag = false;
+                pthread_mutex_unlock(&database_lock);
+                break;  // Reset loop
+            }            
+            else if (dump_contents == false && ((database_i *)database)->all_substrings[i]->count % 2 != 0)
+                continue;
+            
 
             file_i *tmp = NULL;
 
@@ -236,31 +220,41 @@ void *print_all(void *database)
 
                 printf("substring: %s\n", ((database_i *)database)->all_substrings[i]->substring);
                 puts("********************");
-                printf("file: %s\n", ((database_i *)database)->all_substrings[i]->file_hits->file_dir);
-                puts("--------------------");
+                printf("File: %s\n", ((database_i *)database)->all_substrings[i]->file_hits->file_dir);
 
                 if (((database_i *)database)->all_substrings[i]->file_hits->next_hit) {
                     tmp = ((database_i *)database)->all_substrings[i]->file_hits->next_hit;
                 }
 
                 while(tmp) {
-                    printf("file: %s\n", tmp->file_dir);
-                    puts("--------------------");
-
+                    printf("File: %s\n", tmp->file_dir);
                     tmp = tmp->next_hit;
                 }
+                puts("********************\n");
             }
-            puts("********************\n");
+            else if (dump_contents == true && !((database_i *)database)->all_substrings[i]->file_hits) {
+                printf("substring: %s\n", ((database_i *)database)->all_substrings[i]->substring);
+                puts("********************");
+                puts("********************\n");
+                if (i == ((database_i *)database)->size - 1)
+                    dump_contents = false;  // Reset flag
+            }
+
+            if (dump_contents == true && i == ((database_i *)database)->size - 1) 
+                dump_contents = false;  // Reset flag
         }
 
-        pthread_mutex_lock(&database_lock);
-        puts("cleanup lock");
-        cleanup(database, false);
-        pthread_mutex_unlock(&database_lock);
-        puts("cleanup unlock");
+        if (dump_contents != true) {
+            pthread_mutex_lock(&database_lock);
+            cleanup(database, false);
+            pthread_mutex_unlock(&database_lock);
+        }
 
-        sleep(5);
-
+        if (exit_flag == true)
+            break;
+        puts("Enter Command: ");
+        if (dump_contents != true)
+            sleep(3);
     }
 
     return 0;

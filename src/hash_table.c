@@ -161,25 +161,24 @@ void cleanup(database_i *hashtable, bool on_exit)
 
             if (current_node->file_hits != NULL && current_node->file_hits->next_hit != NULL)
             {
-
                 next_file = current_node->file_hits->next_hit;
-                // next_node = NULL;
             }
 
             if (current_node->file_hits == NULL)
-            {
-                
-                if (on_exit == true)
+            { 
+                if (on_exit == true && current_node->substring != NULL) {
                     free(current_node->substring);
-                // free(current_node->substring);
-                //  free(current_node->file_hits);
+                    current_node->substring = NULL;
+                }
             }
             else
             {
                 
-                if (next_file == NULL)
+                if (next_file == NULL && current_node->substring != NULL) {
                     free(current_node->substring);
-
+                    current_node->substring = NULL;
+                }
+                    
                 free(current_node->file_hits->file_dir);
                 current_node->file_hits->file_dir = NULL;
 
@@ -188,6 +187,8 @@ void cleanup(database_i *hashtable, bool on_exit)
 
                 free(current_node->file_hits);
                 current_node->file_hits = NULL;
+
+                current_node->count--;
             }
       
             if (next_file == NULL) {

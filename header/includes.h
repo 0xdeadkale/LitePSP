@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include <errno.h>        // For error handling.
+#include <signal.h>       // For signal handling.
 
 #include <unistd.h>       // For a lot of functions.
 #include <limits.h>       // Defines many macro's (i.e. PATH_MAX)

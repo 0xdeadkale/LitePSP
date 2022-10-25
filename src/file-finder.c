@@ -5,6 +5,8 @@
 
 #include "header/file-finder.h"
 
+static void handler(int signum);
+
 int main(int argc, char *argv[])
 {
 
@@ -53,6 +55,8 @@ int main(int argc, char *argv[])
         free(node.substring);
     }
 
+    create_sig_handler(SIGINT, handler); // For CTRL+C handling.
+
     /* Business logic */
     status = thread_dispatcher(database);  // In file_util.c
     if (status != 0) {
@@ -69,4 +73,30 @@ EXIT:
 
     puts("\nExiting...");
     return status;
+}
+
+void create_sig_handler(int signum, void (*p_func)(int))
+{
+    struct sigaction sa = { .sa_handler = p_func };
+    if (sigaction(signum, &sa, NULL) == -1)
+    {
+        perror("Sigaction:");
+    }
+}
+
+static void handler(int signum)
+{
+    (void)signum;
+
+    switch (signum)
+    {
+        // Add other signals here.
+        case SIGINT:
+            exit_flag = true;
+            break;
+        default:
+            puts("\nHow did this happen!?");
+            break;
+    }
+
 }

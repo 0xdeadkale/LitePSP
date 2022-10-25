@@ -16,8 +16,6 @@ void *user_input(void *varg_p);
 
 void *read_dir(void *varg_p);
 
-int print_substring(substring_i *substring);
-
 void *print_all(void *database);
 
 #endif /* FILELIB_H */
