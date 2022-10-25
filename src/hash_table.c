@@ -174,7 +174,7 @@ void cleanup(database_i *hashtable, bool on_exit)
             else
             {
                 
-                if (next_file == NULL && current_node->substring != NULL) {
+                if (on_exit == true && next_file == NULL && current_node->substring != NULL) {
                     free(current_node->substring);
                     current_node->substring = NULL;
                 }
