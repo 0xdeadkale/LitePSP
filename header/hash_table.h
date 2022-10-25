@@ -38,7 +38,7 @@ substring_i *search_node(database_i *hashtable, size_t key);
 
 int delete_node(database_i *hashtable, size_t key);
 
-void cleanup(database_i *hashtable);
+void cleanup(database_i *hashtable, bool on_exit);
 
 size_t hash(const void *var);
 

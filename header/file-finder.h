@@ -10,7 +10,10 @@
 #include "hash_table.h"
 #include "file_util.h"
 
-pthread_mutex_t database_lock  = PTHREAD_MUTEX_INITIALIZER;
+volatile __sig_atomic_t exit_flag = false;
+volatile __sig_atomic_t dump_flag = false;
+
+pthread_mutex_t database_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #endif /* PARSER_H */
 

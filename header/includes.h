@@ -14,15 +14,15 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include <dirent.h>       // Used for dirent and DIR operations.
-#include <unistd.h>       // For a lot of functions.
-#include <limits.h>       // Defines many macro's (i.e. PATH_MAX)
-#include <sys/stat.h>     // For stat().
-
 #include <errno.h>        // For error handling.
 
-#include <fts.h>
+#include <unistd.h>       // For a lot of functions.
+#include <limits.h>       // Defines many macro's (i.e. PATH_MAX)
+
+#include <fts.h>          // For dir walking.
 #include <pthread.h>      // For multithreading.
+#include <fcntl.h>        // For changing stdin to non-blocking.
+#include <poll.h>         // For polling stdin
 
 /*
 #include <getopt.h>       // For cmd-line parsing.

@@ -7,60 +7,113 @@
 
 int thread_dispatcher(database_i *database) {
 
+    /* This could be a thread pool for less thread creation overhead/better efficiency */ 
+
+    pthread_t thread_id_user, thread_id_dumper;
+
+    pthread_create(&thread_id_dumper, NULL, print_all, (void *)database);
+    pthread_create(&thread_id_user, NULL, user_input, (void *)database);
+    
     for (int i = 0; i < database->size; i++) {
 
-        pthread_t thread_id;
-        pthread_create(&thread_id, NULL, read_dir, (void *)database);
-        pthread_join(thread_id, NULL);
+        pthread_t thread_id_workers;
+        pthread_create(&thread_id_workers, NULL, read_dir, (void *)database);
+        pthread_join(thread_id_workers, NULL);
     }
+
+    pthread_mutex_lock(&database_lock);
+    puts("Exit lock");
+    exit_flag = true;
+    pthread_mutex_unlock(&database_lock);
+
+    pthread_join(thread_id_dumper, NULL);
+    pthread_join(thread_id_user, NULL);
 
     return 0;
 }
 
+void *user_input(void *varg_p) {
+
+    int status = 0;
+    char input_buf[6] = {};
+    struct pollfd input[1] = {{fd: STDIN_FILENO, events: POLLIN}};
+
+
+    status = fcntl(STDIN_FILENO, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);  // Set stdin to non-blocking
+    {
+        if (errno != 0)
+        {
+            perror("fcntl");
+            status = -1;
+            goto END;
+        }
+    }
+
+    while(true) {
+
+        status = poll(input, 1, -1);  // Poll for stdin for immediate response.
+        
+        fgets(input_buf, 6, stdin);
+
+        printf("Command entered: %s\n", input_buf);
+
+        /* Commands parsed per the project's requirements */
+        if (strncmp(input_buf, "Exit\n", 6) == 0) {
+            pthread_mutex_lock(&database_lock);
+            puts("Exit lock");
+            exit_flag = true;
+            pthread_mutex_unlock(&database_lock);
+            break;
+        }
+        else if (strncmp(input_buf, "Dump\n", 6) == 0) {
+            pthread_mutex_lock(&database_lock);
+            puts("Dump lock");
+            dump_flag = true;
+            pthread_mutex_unlock(&database_lock);
+        }
+    }
+
+END:
+    printf("Status: %d\n", status);
+
+    return 0;
+
+}
+
 void *read_dir(void *varg_p)
 {
-    // database_i *database = (database_i *)varg_p;
-
     int index = 0;
+    FTS *ftsp = NULL;
 
     for (int i = 0; i < ((database_i *)varg_p)->size; i++) {
 
-        
-        
+        if (exit_flag == true)
+            goto END;
+        if (dump_flag == true) {
+            pthread_mutex_lock(&database_lock);
+            puts("Lock1");
+            dump_flag = false;
+            pthread_mutex_unlock(&database_lock);
+
+            print_all(((database_i *)varg_p));
+        }
+
         if(((database_i *)varg_p)->all_substrings[i]->status == 0){
 
             pthread_mutex_lock(&database_lock);
-            puts("Locked mutex");
-
+            puts("Status lock");
             ((database_i *)varg_p)->all_substrings[i]->status = 1;
-            printf("Job: %s\n", ((database_i *)varg_p)->all_substrings[i]->substring);
-
             pthread_mutex_unlock(&database_lock);
-            puts("UnLocked mutex");
-
-            index = i;
+             puts("Status unlock");
             
+            index = i;
             break;
-        }
-    
-        
+        } 
     }
 
     char *paths[] = { ((database_i *)varg_p)->root_dir, NULL };
 	
-	/* 2nd parameter: An options parameter. Must include either
-	   FTS_PHYSICAL or FTS_LOGICAL---they change how symbolic links
-	   are handled.
-	   The 2nd parameter can also include the FTS_NOCHDIR bit (with a
-	   bitwise OR) which causes fts to skip changing into other
-	   directories. I.e., fts will call chdir() to literally cause
-	   your program to behave as if it is running into another
-	   directory until it exits that directory. See "man fts" for more
-	   information.
-	   Last parameter is a comparator which you can optionally provide
-	   to change the traversal of the filesystem hierarchy.
-	*/
-	FTS *ftsp = fts_open(paths, FTS_PHYSICAL, NULL);
+	ftsp = fts_open(paths, FTS_PHYSICAL, NULL);
 	if(ftsp == NULL)
 	{
 		perror("fts_open");
@@ -69,109 +122,145 @@ void *read_dir(void *varg_p)
 
 	while(true) // call fts_read() enough times to get each file
 	{
+        if (exit_flag == true)
+            break;
 
 		FTSENT *ent = fts_read(ftsp); // get next entry (could be file or directory).
-		if(ent == NULL)
+		if (ent == NULL)
 		{
-			if(errno == 0)
-				break; // No more items, bail out of while loop
+			if (errno == 0)
+				break;
 			else
 			{
-				// fts_read() had an error.
 				perror("fts_read");
-				exit(EXIT_FAILURE);
+				goto END;
 			}
 		}
-			
-		// Given a "entry", determine if it is a file or directory
-		if(ent->fts_info & FTS_D)   // We are entering into a directory
-			//printf("Enter dir: ");
-            ;
-		else if(ent->fts_info & FTS_DP) // We are exiting a directory
-			//printf("Exit dir:  ");
-            ;
-		else if(ent->fts_info & FTS_F) // The entry is a file. 
+		
+        /* A file is seen in the current directory */
+		if(ent->fts_info & FTS_F) 
         {
             char *trigger = strstr(ent->fts_name, ((database_i *)varg_p)->all_substrings[index]->substring);
-            if(trigger) {
-                puts("---------------");
 
+            /* If there is a file name hit */
+            if(trigger) {
+              
                 file_i file_found = {};
                 substring_i node = {};
             
                 pthread_mutex_lock(&database_lock);
-                puts("Locked mutex for insert");
+                puts("Insert lock");
                 
+                /* Prepare node to insert into hashtable, and chain to other nodes at hashtbale index */
                 node.substring = strndup(((database_i *)varg_p)->all_substrings[index]->substring, 255);
 
                 file_found.file_dir = strndup(ent->fts_path, 255);
                 file_found.file_name = strndup(ent->fts_name, 255);
                 node.file_hits = &file_found;
 
-                // puts("Here");
-			    printf("File name found: %s\n", ent->fts_name);
-                printf("File dir found: %s\n", ent->fts_path);
                 insert_node(((database_i *)varg_p), ((database_i *)varg_p)->all_substrings[index]->key, &node);
 
                 pthread_mutex_unlock(&database_lock);
-                puts("UnLocked mutex for insert");
-                puts("---------------");
+                puts("Insert unlock");
+                
                 free(file_found.file_dir);
                 free(file_found.file_name);
                 free(node.substring);
-            }
-                
+            }             
         }
-		else // entry is something else
-			//printf("Other:     ");
-            ;
-
-		// print path to file after the label we printed above.
-		//printf("%s\n", ent->fts_path);
-
 	}
 
+    // TODO ENUM status
+
     pthread_mutex_lock(&database_lock);
+    puts("status done lock");
     ((database_i *)varg_p)->all_substrings[index]->status = 2;
     pthread_mutex_unlock(&database_lock);
-        
+    puts("status done unlock");
 
-	// close fts and check for error closing.
-	if(fts_close(ftsp) == -1)
-		perror("fts_close");
+    if (exit_flag == true)
+        goto END;
+        
+END:
+
+    if (ftsp != NULL) {
+        fts_close(ftsp);
+    }
+	
 	return 0;
 }
 
-int print_node(database_i *database) {
+int print_substring(substring_i *substring) 
+{
+    file_i *tmp = NULL;
 
-    for (size_t i = 0; i < database->size; ++i) {
+    if (substring) {
 
-        file_i *tmp = NULL;
+        printf("substring: %s\n", substring->substring);
+        puts("Start********************");
+        printf("file name: %s\n", substring->file_hits->file_name);
+        printf("file dir: %s\n", substring->file_hits->file_dir);
+        puts("--------------------");
 
-        if (database->all_substrings[i]->file_hits) {
-
-            printf("substring: %s\n", database->all_substrings[i]->substring);
-            puts("@@@@@@@@@@@@@@@@@@");
-            printf("file name: %s\n", database->all_substrings[i]->file_hits->file_name);
-            puts("");
-            printf("file dir: %s\n", database->all_substrings[i]->file_hits->file_dir);
-            puts("");
-            puts("######");
-
-            if (database->all_substrings[i]->file_hits->next_hit) {
-                tmp = database->all_substrings[i]->file_hits->next_hit;
-            }
-
-            while(tmp) {
-                
-                printf("file name: %s\n", tmp->file_name);
-                printf("file dir: %s\n", tmp->file_dir);
-                puts("######");
-
-                tmp = tmp->next_hit;
-            }
+        if (substring->file_hits->next_hit) {
+            tmp = substring->file_hits->next_hit;
         }
-        puts("@@@@@@@@@@@@@@@@@@");
+
+        while(tmp) {
+            
+            printf("file name: %s\n", tmp->file_name);
+            printf("file dir: %s\n", tmp->file_dir);
+            puts("--------------------");
+
+            tmp = tmp->next_hit;
+        }
+    }
+    puts("End********************");
+    puts("\n");
+    
+    return 0;
+}
+
+void *print_all(void *database) 
+{
+    sleep(3);
+    puts("Made it here");
+    while(exit_flag != true) {
+        printf("Database size:%ld\n", ((database_i *)database)->size);
+
+        for (size_t i = 0; i < ((database_i *)database)->size; ++i) {
+
+            file_i *tmp = NULL;
+
+            if (((database_i *)database)->all_substrings[i]->file_hits) {
+
+                printf("substring: %s\n", ((database_i *)database)->all_substrings[i]->substring);
+                puts("********************");
+                printf("file: %s\n", ((database_i *)database)->all_substrings[i]->file_hits->file_dir);
+                puts("--------------------");
+
+                if (((database_i *)database)->all_substrings[i]->file_hits->next_hit) {
+                    tmp = ((database_i *)database)->all_substrings[i]->file_hits->next_hit;
+                }
+
+                while(tmp) {
+                    printf("file: %s\n", tmp->file_dir);
+                    puts("--------------------");
+
+                    tmp = tmp->next_hit;
+                }
+            }
+            puts("********************\n");
+        }
+
+        pthread_mutex_lock(&database_lock);
+        puts("cleanup lock");
+        cleanup(database, false);
+        pthread_mutex_unlock(&database_lock);
+        puts("cleanup unlock");
+
+        sleep(5);
+
     }
 
     return 0;

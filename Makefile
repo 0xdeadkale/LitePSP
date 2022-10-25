@@ -11,6 +11,7 @@ LIB2 = src/file_util.c
 
 BIN = src/file-finder.c build/hash_table.a build/file_util.a
 
+TEST = $(shell for x in {a..z} ; do mkdir -p test/$x/${x}{a..z} ; done)
 #PORT = 53673
 
 all: setup lib file-finder
@@ -18,6 +19,7 @@ all: setup lib file-finder
 #Creates all needed directories.
 setup:
 	@mkdir -p bin build doc include src test
+	echo $(TEST)
 	@mkdir test/subdir_1 test/subdir2 test/subdir_3
 	@touch test/subdir_1/aaa test/subdir2/bbb test/subdir_3/ccc
 
