@@ -20,7 +20,6 @@ typedef struct substring
     size_t count;    // Number of file hits from substring
     file_i *file_hits;
     int status;
-    struct substring *next_substring;
 } substring_i;
 
 typedef struct database
@@ -41,6 +40,13 @@ int delete_node(database_i *hashtable, size_t key);
 void cleanup(database_i *hashtable, bool on_exit);
 
 size_t hash(const void *var);
+
+enum thread_status
+{
+    WORK_FREE = 0,
+    WORK_IN_PROGRESS = 1,
+    WORK_COMPLETE = 2
+};
 
 enum constraints
 {

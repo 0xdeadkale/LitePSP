@@ -5,6 +5,7 @@
 
 #include "header/file-finder.h"
 
+
 static void handler(int signum);
 
 int main(int argc, char *argv[])
@@ -32,7 +33,7 @@ int main(int argc, char *argv[])
         status = -1;
         goto EXIT;
     }
-    database->root_dir = strndup(argv[1], 255);
+    database->root_dir = strndup(argv[1], PATH_SIZE);
 
     /* Inserts substrings into hashtable as nodes. Each node has a linked-list
      * of file 'hits' from when the directory walk is scanning for files.
@@ -59,9 +60,8 @@ int main(int argc, char *argv[])
 
     /* Business logic */
     status = thread_dispatcher(database);  // In file_util.c
-    if (status != 0) {
+    if (status != 0)
         goto EXIT;
-    }
 
 EXIT:
     if (database != NULL && database->root_dir != NULL)
@@ -92,6 +92,7 @@ static void handler(int signum)
     {
         // Add other signals here.
         case SIGINT:
+            puts("CTRL-C detected, waiting for sleep");
             exit_flag = true;
             break;
         default:

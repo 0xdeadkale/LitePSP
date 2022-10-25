@@ -1,43 +1,82 @@
 /** @file file_util.c
  *
- * @brief Provides the ability to interface with files.
+ * @brief File that holds the threading, dir walk, and 
+ * printing functions used in the business logic of this
+ * project.
  */
 
 #include "header/file_util.h"
 
-int thread_dispatcher(database_i *database) {
-
+/**
+ * @brief This function generates and joins threads for
+ * the different aspects of the program (dumper, etc.)
+ *
+ * @param database Pointer to the hashtable.
+ * 
+ * @return The status of the any thread operations.
+ */
+int thread_dispatcher(database_i *database) 
+{
     /* This could be a thread pool for less thread creation overhead/better efficiency */ 
 
+    int status = 0;
     pthread_t thread_id_user, thread_id_dumper;
 
-    pthread_create(&thread_id_dumper, NULL, print_all, (void *)database);
-    pthread_create(&thread_id_user, NULL, user_input, (void *)database);
+    /* Create threads for the dumper and user input*/
+    status = pthread_create(&thread_id_dumper, NULL, print_all, (void *)database);
+    status = pthread_create(&thread_id_user, NULL, user_input, (void *)database);
+    if (status != 0)
+    {
+        perror("Could not create thread");
+        goto END;
+    }
     
+    /* Create threads for each substring to dir walk asynchronously */
     for (int i = 0; i < database->size; i++) {
-
         pthread_t thread_id_workers;
-        pthread_create(&thread_id_workers, NULL, read_dir, (void *)database);
-        pthread_join(thread_id_workers, NULL);
+
+        status = pthread_create(&thread_id_workers, NULL, read_dir, (void *)database);
+        if (status != 0)
+        {
+            perror("Could not create thread");
+            goto END;
+        }
+
+        status = pthread_join(thread_id_workers, NULL);
+        if (status != 0)
+        {
+            perror("Could not join thread");
+            goto END;
+        }
     }
 
-    pthread_join(thread_id_dumper, NULL);
-    pthread_join(thread_id_user, NULL);
+    // exit_flag = true;
 
-    return 0;
+    status = pthread_join(thread_id_dumper, NULL);
+    status = pthread_join(thread_id_user, NULL);
+    if (status != 0)
+        {
+            perror("Could not join thread");
+            goto END;
+        }
+
+END:
+    return status;
 }
 
-void *user_input(void *varg_p) {
 
+void *user_input(void *varg_p) 
+{
+
+    /* Set up variables */
     int status = 0;
     char input_buf[6] = {};
-    struct pollfd input[1] = {{fd: STDIN_FILENO, events: POLLIN}};
+    struct pollfd input[1] = {{fd: STDIN_FILENO, events: POLLIN}};  // Set up poll for stdin
 
     sigset_t thread_set;
     sigfillset(&thread_set);
     pthread_sigmask(SIG_BLOCK, &thread_set, NULL); // Block all signals.
-
-
+    /********************/
 
     status = fcntl(STDIN_FILENO, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);  // Set stdin to non-blocking
     {
@@ -105,10 +144,10 @@ void *read_dir(void *varg_p)
             print_all(((database_i *)varg_p));
         }
 
-        if(((database_i *)varg_p)->all_substrings[i]->status == 0){
+        if(((database_i *)varg_p)->all_substrings[i]->status == WORK_FREE){
 
             pthread_mutex_lock(&database_lock);
-            ((database_i *)varg_p)->all_substrings[i]->status = 1;
+            ((database_i *)varg_p)->all_substrings[i]->status = WORK_IN_PROGRESS;
             pthread_mutex_unlock(&database_lock);
             
             index = i;
@@ -153,18 +192,23 @@ void *read_dir(void *varg_p)
                 file_i file_found = {};
                 substring_i node = {};
             
-                pthread_mutex_lock(&database_lock);
+                pthread_mutex_lock(&database_lock);  // Lock
                 
                 /* Prepare node to insert into hashtable, and chain to other nodes at hashtbale index */
-                node.substring = strndup(((database_i *)varg_p)->all_substrings[index]->substring, 255);
+                node.substring = strndup(((database_i *)varg_p)->all_substrings[index]->substring, PATH_SIZE);
 
-                file_found.file_dir = strndup(ent->fts_path, 255);
-                file_found.file_name = strndup(ent->fts_name, 255);
+                file_found.file_dir = strndup(ent->fts_path, PATH_MAX);
+                file_found.file_name = strndup(ent->fts_name, FILENAME_MAX);
                 node.file_hits = &file_found;
 
+                /* Speed of processing files is limited for stdout readability */
+                if (((database_i *)varg_p)->all_substrings[index]->count == 10) {
+                    sleep(7);
+                }
+                    
                 insert_node(((database_i *)varg_p), ((database_i *)varg_p)->all_substrings[index]->key, &node);
 
-                pthread_mutex_unlock(&database_lock);
+                pthread_mutex_unlock(&database_lock);  // Unlock
                 
                 free(file_found.file_dir);
                 free(file_found.file_name);
@@ -176,7 +220,7 @@ void *read_dir(void *varg_p)
     // TODO ENUM status
 
     pthread_mutex_lock(&database_lock);
-    ((database_i *)varg_p)->all_substrings[index]->status = 2;
+    ((database_i *)varg_p)->all_substrings[index]->status = WORK_COMPLETE;
     pthread_mutex_unlock(&database_lock);
 
     if (exit_flag == true)
@@ -194,20 +238,24 @@ END:
 void *print_all(void *database) 
 {
     bool dump_contents = false;
+    size_t count = 0;
 
     while(exit_flag != true) {
 
         puts("Searching...\n");
 
+        pthread_mutex_lock(&database_lock);
+
         for (size_t i = 0; i < ((database_i *)database)->size; ++i) {
 
-            /* Logic that decides when to print to stdout*/
+            count = 0;
+
+            /* Logic that decides when to print to stdout */
             if (dump_flag == true) {
-                puts("Dump triggered");
                 dump_contents = true;
-                pthread_mutex_lock(&database_lock);
+                
                 dump_flag = false;
-                pthread_mutex_unlock(&database_lock);
+                
                 break;  // Reset loop
             }            
             else if (dump_contents == false && ((database_i *)database)->all_substrings[i]->count % 2 != 0)
@@ -226,8 +274,19 @@ void *print_all(void *database)
                     tmp = ((database_i *)database)->all_substrings[i]->file_hits->next_hit;
                 }
 
-                while(tmp) {
+                while(tmp && exit_flag != true) {
                     printf("File: %s\n", tmp->file_dir);
+                    count++;
+
+                    if (dump_flag != true && count % 10 == 0) {
+                        sleep(1);
+                        break;
+                    }
+                        
+                    else if(count >= 100) {
+                        puts("Too many file hits to print. Skipping");
+                        break;
+                    }
                     tmp = tmp->next_hit;
                 }
                 puts("********************\n");
@@ -243,6 +302,8 @@ void *print_all(void *database)
             if (dump_contents == true && i == ((database_i *)database)->size - 1) 
                 dump_contents = false;  // Reset flag
         }
+
+        pthread_mutex_unlock(&database_lock);
 
         if (dump_contents != true) {
             pthread_mutex_lock(&database_lock);
