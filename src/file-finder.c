@@ -65,20 +65,19 @@ int main(int argc, char *argv[])
         goto EXIT;
     }
 
-    
-    
+    /* If worker threads are done, exit gracefully */
     while(exit_flag == true || jobs == 2) {
+        printf("Jobs: %d\n", jobs);
         exit_flag = true;
         if (jobs == 0)
             break;
         else
-            sleep(2);
+            sleep(2);  // Wait for dumper and input threads
      }
-        
-    
-    // dumper((void *)database);
 
 EXIT:
+
+    /* Clean up remnants of the hashtable */
     if (database != NULL && database->root_dir != NULL)
     {
         free(database->root_dir);

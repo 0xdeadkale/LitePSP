@@ -18,7 +18,7 @@ all: setup lib file-finder
 
 #Creates all needed directories.
 setup:
-	@mkdir -p bin build doc include src test
+	@mkdir -p bin build doc header src test
 	echo $(TEST)
 	@mkdir test/subdir_1 test/subdir2 test/subdir_3
 	@touch test/subdir_1/aaa test/subdir2/bbb test/subdir_3/ccc

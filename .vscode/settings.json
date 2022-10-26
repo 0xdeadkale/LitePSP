@@ -5,6 +5,7 @@
         "string_view": "c",
         "initializer_list": "c",
         "utility": "c",
-        "file_util.h": "c"
+        "file_util.h": "c",
+        "cstdlib": "c"
     }
 }

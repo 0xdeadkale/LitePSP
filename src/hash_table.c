@@ -19,9 +19,12 @@
  */
 database_i *create_hash(size_t size)
 {
+    int status = 0;
+
     if (size < 1)
     {
         puts("Need a real bucket size\n");
+        status = -1;
         goto END;
     }
 
@@ -30,6 +33,7 @@ database_i *create_hash(size_t size)
     if (NULL == hashtable)
     {
         perror("Hashtable Calloc failed");
+        status = -1;
         goto END;
     }
     hashtable->size = size;
@@ -39,17 +43,20 @@ database_i *create_hash(size_t size)
     if (NULL == hashtable->all_substrings)
     {
         perror("Array Calloc failed!\n");
+        status = -1;
         goto END;
     }
 
-    return hashtable;
+    
 
 END:
-    if (hashtable != NULL)
+    if (status == -1 && hashtable != NULL)
     {
         free(hashtable);
+        return NULL;
     }
-    return NULL;
+    else
+        return hashtable;
 }
 
 /**
@@ -110,12 +117,14 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
             goto END;
         }
 
+        /* Populate node data */
         node->key = key;
         node->substring = strndup(data->substring, PATH_SIZE);
         node->file_count = 0;
         node->file_hits = NULL;
         node->status = 0;
         
+        /* Insert node into hashtable */
         hashtable->all_substrings[index] = node;
     }
 
@@ -139,7 +148,8 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
                 file_tmp = file_tmp->next_hit;
             }
 
-            hashtable->all_substrings[index]->file_count++;  // Update count when adding node
+            /* Add to substring node count and total count */
+            hashtable->all_substrings[index]->file_count++;  
             file_tmp->next_hit = file;  
         }
     }
@@ -236,7 +246,7 @@ void cleanup(database_i *hashtable, bool on_exit)
                 
             }
       
-            /* If no more files to free, free main node */
+            /* If no more files to free, free main node (when exiting) */
             if (next_file == NULL) {
         
                 if (on_exit == true) {
@@ -250,7 +260,7 @@ void cleanup(database_i *hashtable, bool on_exit)
         } while (current_node != NULL || next_file != NULL);
     }
 
-    /* Free hashtable when exiting */
+    /* Free hashtable (when exiting) */
     if (on_exit == true) {
         free(hashtable->all_substrings);
         hashtable->all_substrings = NULL;
