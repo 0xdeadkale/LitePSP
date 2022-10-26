@@ -391,15 +391,22 @@ void *dumper(void *database)
 
     int status = 0;
 
-    bool dump_contents = false;
+    // bool dump_contents = false;
     size_t count = 0;
 
     while(exit_flag != true) {
 
         // puts("Searching...\n");
 
-        struct timespec wait_time = {};
-        struct timeval now_time = {};
+        struct timespec wait_time = {0};
+
+        status = clock_gettime(CLOCK_REALTIME, &wait_time);
+        if (status == -1) {
+            perror("clock_gettime");
+            exit(EXIT_FAILURE);
+        }
+        
+        wait_time.tv_sec += 3;
 
         
         
@@ -407,15 +414,17 @@ void *dumper(void *database)
         puts("++++++++Dumper 3 sec or signal++++++++++");
         pthread_mutex_lock(&dump_lock);
 
-        wait_time.tv_sec = now_time.tv_sec + 3;
-        wait_time.tv_nsec = (now_time.tv_usec + 1000UL * 3000) * 1000UL;
+        
 
         while(dump_flag == false) {
+            puts("In while loop cond");
             status = pthread_cond_timedwait(&dumper_cond, &dump_lock, &wait_time);
             if (status == ETIMEDOUT) {
                 puts("cond timeout");
                 break;
             }
+            else
+                puts("Signal");
         }
         pthread_mutex_unlock(&dump_lock);
         puts("Unlocking dump lock");
@@ -444,13 +453,13 @@ void *dumper(void *database)
             count = 0;
 
             /* Logic that decides when to print to stdout */
-            if (dump_flag == true) {
+            /* if (dump_flag == true) {
                 dump_contents = true;
                 
                 dump_flag = false;
                 
                 break;  // Reset loop
-            }            
+            } */            
             // else if (dump_contents == false && ((database_i *)database)->all_substrings[i]->count % 2 != 0)
                 // continue;
             
@@ -548,16 +557,24 @@ void *dumper(void *database)
         cleanup(database, false);
             // pthread_mutex_unlock(&database_lock);
         // }
+
+        if (dump_flag == true) {
+            pthread_mutex_lock(&dump_lock);
+            dump_flag = false;
+            pthread_mutex_unlock(&dump_lock);
+        }
+        
+            
         pthread_mutex_unlock(&database_lock);
         puts("--------UnLocking for dumper--------");
 
         if (exit_flag == true)
             break;
         // puts("Enter Command: ");
-        if (dump_contents != true) {
+        /* if (dump_contents != true) {
             puts("Sleeping dumper");
             sleep(3);
-        }
+        } */
             
     }
     pthread_mutex_lock(&shutdown_lock);
