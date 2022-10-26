@@ -16,7 +16,7 @@ void *user_input(void *varg_p);
 
 void *read_dir(void *varg_p);
 
-void *print_all(void *database);
+void *dumper(void *database);
 
 #endif /* FILELIB_H */
 

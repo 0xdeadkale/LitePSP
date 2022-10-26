@@ -60,8 +60,13 @@ int main(int argc, char *argv[])
 
     /* Business logic */
     status = thread_dispatcher(database);  // In file_util.c
-    if (status != 0)
+    if (status != 0) {
+        puts("Threads broke");
         goto EXIT;
+    }
+        
+    
+    // dumper((void *)database);
 
 EXIT:
     if (database != NULL && database->root_dir != NULL)
@@ -92,7 +97,7 @@ static void handler(int signum)
     {
         // Add other signals here.
         case SIGINT:
-            puts("CTRL-C detected, waiting for sleep");
+            puts("TRL-C detected, waiting for sleep");
             exit_flag = true;
             break;
         default:

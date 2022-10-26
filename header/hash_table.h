@@ -15,11 +15,12 @@ typedef struct file
 
 typedef struct substring
 {
-    size_t key;      // Hash generated from substring arg.
-    char *substring; // Substring to compare
-    size_t count;    // Number of file hits from substring
-    file_i *file_hits;
-    int status;
+    size_t key;         // Hash generated from substring arg.
+    char *substring;    // Substring to compare
+    size_t count;       // Number of file hits from substring
+    file_i *file_hits;  // Linked list of files 
+    int status;         // Used for assigning work
+    pthread_t assigned;
 } substring_i;
 
 typedef struct database
@@ -27,6 +28,7 @@ typedef struct database
     size_t size; /* Size of hashtable. */
     char *root_dir;
     substring_i **all_substrings;
+    pthread_t current_assigned;
 } database_i;
 
 database_i *create_hash(size_t size);
