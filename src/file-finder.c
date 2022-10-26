@@ -64,6 +64,16 @@ int main(int argc, char *argv[])
         puts("Threads broke");
         goto EXIT;
     }
+
+    
+    
+    while(exit_flag == true || jobs == 2) {
+        exit_flag = true;
+        if (jobs == 0)
+            break;
+        else
+            sleep(2);
+     }
         
     
     // dumper((void *)database);

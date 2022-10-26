@@ -112,7 +112,7 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
 
         node->key = key;
         node->substring = strndup(data->substring, PATH_SIZE);
-        node->count = 0;
+        node->file_count = 0;
         node->file_hits = NULL;
         node->status = 0;
         
@@ -122,7 +122,7 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
     /* Chain the file data to an existing node */
     if (file)
     {
-        hashtable->all_substrings[index]->count = 1;
+        hashtable->all_substrings[index]->file_count = 1;
 
         /* If there is not node in the linked list, place first node */
         if (hashtable->all_substrings[index]->file_hits == NULL)
@@ -134,11 +134,12 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
 
             while (file_tmp->next_hit != NULL)
             {
-                hashtable->all_substrings[index]->count++;  
+                hashtable->total_count++;
+                hashtable->all_substrings[index]->file_count++;
                 file_tmp = file_tmp->next_hit;
             }
 
-            hashtable->all_substrings[index]->count++;  // Update count when adding node
+            hashtable->all_substrings[index]->file_count++;  // Update count when adding node
             file_tmp->next_hit = file;  
         }
     }
@@ -229,7 +230,10 @@ void cleanup(database_i *hashtable, bool on_exit)
                 free(current_node->file_hits);
                 current_node->file_hits = NULL;
 
-                current_node->count--;
+                /* Subtract from substring node count and total count */
+                current_node->file_count--;
+                hashtable->total_count--;
+                
             }
       
             /* If no more files to free, free main node */

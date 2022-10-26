@@ -17,18 +17,18 @@ typedef struct substring
 {
     size_t key;         // Hash generated from substring arg.
     char *substring;    // Substring to compare
-    size_t count;       // Number of file hits from substring
-    file_i *file_hits;  // Linked list of files 
+    file_i *file_hits;  // Linked list of files
+    size_t file_count;  // Number of file hits from substring
     int status;         // Used for assigning work
     pthread_t assigned;
 } substring_i;
 
 typedef struct database
 {
-    size_t size; /* Size of hashtable. */
-    char *root_dir;
-    substring_i **all_substrings;
-    pthread_t current_assigned;
+    size_t size;                   // Total substrings
+    char *root_dir;                // Root dir from argv[1]
+    substring_i **all_substrings;  // Substring nodes
+    size_t total_count;            // Total count of hits 
 } database_i;
 
 database_i *create_hash(size_t size);
