@@ -10,13 +10,15 @@
 #include "header/file-finder.h"
 #include "header/hash_table.h"
 
-int thread_dispatcher(database_i *database);
+int thread_dispatcher(database_i *);
 
-void *user_input(void *varg_p);
+int assign_job(database_i *);
 
-void *read_dir(void *varg_p);
+void *read_dir(void *);
 
-void *dumper(void *database);
+void *user_input(void *);
+
+void *dumper(void *);
 
 #endif /* FILELIB_H */
 

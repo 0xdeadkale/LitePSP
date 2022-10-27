@@ -119,8 +119,9 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
         /* Populate node data */
         node->key = key;
         node->substring = strndup(data->substring, PATH_SIZE);
-        node->file_count = 0;
         node->file_hits = NULL;
+        node->current_file_count = 0;
+        node->total_file_count = 0;
         node->status = 0;
         
         /* Insert node into hashtable */
@@ -130,7 +131,10 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
     /* Chain the file data to an existing node */
     if (file)
     {
-        hashtable->all_substrings[index]->file_count = 1;
+        /* Update all counts */
+        hashtable->all_substrings[index]->current_file_count = 1;
+        hashtable->all_substrings[index]->total_file_count++;
+        hashtable->total_count++;
 
         /* If there is not node in the linked list, place first node */
         if (hashtable->all_substrings[index]->file_hits == NULL)
@@ -142,13 +146,12 @@ int insert_node(database_i *hashtable, size_t key, substring_i *data)
 
             while (file_tmp->next_hit != NULL)
             {
-                hashtable->total_count++;
-                hashtable->all_substrings[index]->file_count++;
+                hashtable->all_substrings[index]->current_file_count++;  // Temp current count
                 file_tmp = file_tmp->next_hit;
             }
 
-            /* Add to substring node count and total count */
-            hashtable->all_substrings[index]->file_count++;  
+            /* Add to substring current node count */
+            hashtable->all_substrings[index]->current_file_count++;
             file_tmp->next_hit = file;  
         }
     }
@@ -240,8 +243,7 @@ void cleanup(database_i *hashtable, bool on_exit)
                 current_node->file_hits = NULL;
 
                 /* Subtract from substring node count and total count */
-                current_node->file_count--;
-                hashtable->total_count--;
+                current_node->current_file_count--;
                 
             }
       

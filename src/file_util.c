@@ -127,46 +127,26 @@ END:
  */
 void *read_dir(void *database)
 {
+    bool all_work_completed = true;  // For use during exit
+
     int index = -1;
     FTS *ftsp = NULL;
 
     char *paths[] = { ((database_i *)database)->root_dir, NULL };  // Used for fts_open
 
-    /* Loop through substrings status's and assign each thread a job */
-    while(true) {
-
-        
-        for (int i = 0; i < ((database_i *)database)->size; i++) {
-
-            printf("Thread %ld status: %d\n", ((database_i *)database)->all_substrings[i]->assigned, ((database_i *)database)->all_substrings[i]->status);
-
-            if (exit_flag == true)
-                goto END;
-           
-            if(((database_i *)database)->all_substrings[i]->status == WORK_FREE){
-    
-                pthread_mutex_lock(&status_lock);
-                ((database_i *)database)->all_substrings[i]->status = WORK_IN_PROGRESS;
-                pthread_mutex_unlock(&status_lock);
-                      
-                index = ((database_i *)database)->all_substrings[i]->assigned;
-                printf("Index %d assigned to thread: %ld\n", index, ((database_i *)database)->all_substrings[i]->assigned);
-                printf("Thread %ld has substring: %s\n", ((database_i *)database)->all_substrings[i]->assigned, ((database_i *)database)->all_substrings[i]->substring);
-                printf("Thread %ld status: %d\n", ((database_i *)database)->all_substrings[i]->assigned, ((database_i *)database)->all_substrings[i]->status);
-                break;
-            }
-        }
-        if (index != -1)
-            break;
+    /* Get index of thread/substring that is ready to dir walk */
+    index = assign_job(((database_i *)database));
+    if (index == -1) {
+        puts("Job assignment error");
+        goto END;
     }
-    /*****************************************************************/
 
     /* Start of directory walk */
 	ftsp = fts_open(paths, FTS_NOCHDIR, NULL);
 	if(ftsp == NULL)
 	{
 		perror("fts_open");
-		exit(EXIT_FAILURE);
+		goto END;
 	}
 
 	while(true) { // call fts_read() enough times to parse through each directory/file
@@ -187,7 +167,7 @@ void *read_dir(void *database)
 		}
 		
         /* A file is seen in the current directory */
-		if(ent->fts_info & FTS_F) 
+		if(ent->fts_info & FTS_F)
         {
             /* Main trigger for finding a file name that contains the subtring */
             char *trigger = strstr(ent->fts_name, ((database_i *)database)->all_substrings[index]->substring);
@@ -195,10 +175,11 @@ void *read_dir(void *database)
             /* If there is a file name hit */
             if(trigger) {
               
+                /* Templates for data insertion into hashtable */
                 file_i file_found = {};
                 substring_i node = {};
             
-                pthread_mutex_lock(&database_lock);  // Lock
+                pthread_mutex_lock(&database_lock);  // Lock database/hashtable to insert node
                 
                 /* Prepare node to insert into hashtable, and chain to other nodes at hashtbale index */
                 node.substring = strndup(((database_i *)database)->all_substrings[index]->substring, PATH_SIZE);
@@ -208,7 +189,7 @@ void *read_dir(void *database)
                 node.file_hits = &file_found;
 
                 /* Speed of processing files is limited for stdout readability */
-                if (((database_i *)database)->all_substrings[index]->file_count % 4 == 0) {
+                if (((database_i *)database)->all_substrings[index]->current_file_count % 5 == 0) {
                     pthread_mutex_unlock(&database_lock);  // Unlock for dumper to process insertions
                     sleep(4);
                     pthread_mutex_lock(&database_lock);
@@ -217,7 +198,7 @@ void *read_dir(void *database)
                 /* Actual insertion of file into node's linked list */    
                 insert_node(((database_i *)database), ((database_i *)database)->all_substrings[index]->key, &node);
 
-                pthread_mutex_unlock(&database_lock);  // Unlock
+                pthread_mutex_unlock(&database_lock);  // Unlock database/hashtable
                 
                 free(file_found.file_dir);
                 free(file_found.file_name);
@@ -230,9 +211,6 @@ void *read_dir(void *database)
     pthread_mutex_lock(&status_lock);
     ((database_i *)database)->all_substrings[index]->status = WORK_COMPLETE;
     pthread_mutex_unlock(&status_lock);
-
-    if (exit_flag == true)
-        goto END;
         
 END:
     if (ftsp != NULL) {
@@ -243,8 +221,65 @@ END:
     pthread_mutex_lock(&shutdown_lock);
     jobs--;
     pthread_mutex_unlock(&shutdown_lock);
-	
+
+    /* Loops through all substrings to see if all work is done (for exiting) */
+    for (int i = 0; i < ((database_i *)database)->size; i++) {
+
+        if(((database_i *)database)->all_substrings[i]->status != WORK_COMPLETE) {
+            all_work_completed = false;
+
+            break;
+        }
+    }
+
+    if (all_work_completed == true) {
+        pthread_mutex_lock(&shutdown_lock);
+        sleep(3);
+        exit_flag = true;
+        pthread_mutex_unlock(&shutdown_lock);
+    }
+    /*************************************************************************/
+
 	return 0;
+}
+
+/**
+ * @brief This function loops through all substrings and assigns
+ * an 'index' in order to flag that the substring is transversing
+ * the root directory. Used on line 136 of this file.
+ *
+ * @param database Pointer to the hashtable.
+ * 
+ * @return An available index to start dir walking
+ */
+int assign_job(database_i *database) 
+{
+    int index = -1;
+    
+    /* Loop through substrings status's and assign each thread a job */
+    while(true) {
+
+        for (int i = 0; i < ((database_i *)database)->size; i++) {
+           
+            if(((database_i *)database)->all_substrings[i]->status == WORK_FREE){
+    
+                pthread_mutex_lock(&status_lock);
+                ((database_i *)database)->all_substrings[i]->status = WORK_IN_PROGRESS;
+                pthread_mutex_unlock(&status_lock);
+                      
+                index = ((database_i *)database)->all_substrings[i]->assigned;
+                break;
+            }
+        }
+        if (index != -1)
+            break;
+    }
+    /*****************************************************************/
+
+    if (exit_flag == true)
+        index = -1;
+
+    return index;
 }
 
 /**
@@ -362,19 +397,19 @@ void *dumper(void *database)
         wait_time.tv_sec += 3;  // Three second timeout
         /*****************************************************/
 
-        /* Dump container in three seconds, or when cond_signal is sent ('Dump' cmd) */
+        /* Dump container in three seconds, or when cond_signal is sent: i.e.'Dump' cmd */
         pthread_mutex_lock(&dump_lock);
         while(dump_flag == false) {
     
             status = pthread_cond_timedwait(&dumper_cond, &dump_lock, &wait_time);
-            if (status == ETIMEDOUT)
+            if (status == ETIMEDOUT)  // pthread_cond_timedwait timeout (3 seconds)
                 break;
     
         }
         pthread_mutex_unlock(&dump_lock);
         /*****************************************************************************/
 
-        /* Actual dumping of the container */
+        /* Actual dumping of the container: print out all file names and clear container */
         pthread_mutex_lock(&database_lock);     
         for (size_t i = 0; i < ((database_i *)database)->size; ++i) {
 
@@ -403,10 +438,9 @@ void *dumper(void *database)
 
                 }
                 puts("********************\n");
-                /*******************************************************************/
             }
             /* Else if there a no file hits, print empty substrings */
-            else if (((database_i *)database)->all_substrings[i]->file_count == 0) 
+            else if (((database_i *)database)->all_substrings[i]->current_file_count == 0) 
             {
                 printf("substring: %s\n", ((database_i *)database)->all_substrings[i]->substring);
                 puts("********************");
@@ -426,6 +460,7 @@ void *dumper(void *database)
             pthread_mutex_unlock(&dump_lock);
         }
         pthread_mutex_unlock(&database_lock);
+        /*********************************************************************************/
 
         if (exit_flag == true)  // Break out of main loop for clean exit
             break; 

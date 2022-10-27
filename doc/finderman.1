@@ -1,0 +1,15 @@
+.\" Manpage for file-finder.
+.\" Created by Michael Miano for CrowdStrike.
+.TH man 1 "26 October 2022" "1.0" "file-finder man page"
+.SH NAME
+file-finder - Program to parse from a root directory downwards and search for substrings in all filenames.
+.SH SYNOPSIS
+./file-finder <dir> <substring1>[<substring2> [<substring3>]...]
+.SH DESCRIPTION
+ticker is a program that reads a root directory and all following substring arguments, and parses downward through the root directory in search of substrings contained in file names.
+.SH OPTIONS
+[DIR] The root directory to start
+
+[substring...] Any number of substrings to parse (up to ARG_MAX limit)
+.SH AUTHOR
+Michael Miano (michael.miano.dev@gmail.cp,)

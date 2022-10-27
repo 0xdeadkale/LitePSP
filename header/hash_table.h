@@ -15,11 +15,12 @@ typedef struct file
 
 typedef struct substring
 {
-    size_t key;         // Hash generated from substring arg.
-    char *substring;    // Substring to compare
-    file_i *file_hits;  // Linked list of files
-    size_t file_count;  // Number of file hits from substring
-    int status;         // Used for assigning work
+    size_t key;                 // Hash generated from substring arg.
+    char *substring;            // Substring to compare
+    file_i *file_hits;          // Linked list of files
+    size_t current_file_count;  // Current number of file hits
+    size_t total_file_count;    // Total number of file hits
+    int status;                 // Used for assigning work
     pthread_t assigned;
 } substring_i;
 
@@ -31,17 +32,17 @@ typedef struct database
     size_t total_count;            // Total count of hits 
 } database_i;
 
-database_i *create_hash(size_t size);
+database_i *create_hash(size_t);
 
-int insert_node(database_i *hashtable, size_t key, substring_i *data);
+int insert_node(database_i *, size_t, substring_i *);
 
-substring_i *search_node(database_i *hashtable, size_t key);
+substring_i *search_node(database_i *, size_t);
 
-int delete_node(database_i *hashtable, size_t key);
+int delete_node(database_i *, size_t);
 
-void cleanup(database_i *hashtable, bool on_exit);
+void cleanup(database_i *, bool);
 
-size_t hash(const void *var);
+size_t hash(const void *);
 
 enum thread_status
 {

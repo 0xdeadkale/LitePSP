@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     puts("+++++++++++++++++++++++++++++++++++++++++\n");
 
     /* If argc is not at least a <root dir> and <substring1>, exit */
-    if (argc <= 2)
+    if (argc <= 2 || argc > _POSIX_ARG_MAX)
     {
         puts("[-] Invalid number of arguments");
         puts("Usage: ./file-finder <dir> <substring1>[<substring2> [<substring3>]...]");
@@ -93,10 +93,11 @@ int main(int argc, char *argv[])
             break;
         else
             sleep(2);  // Wait for dumper and input threads
-     }
+    }
+
+    print_stats(database);
 
 EXIT:
-
     /* Clean up remnants of the hashtable */
     if (database != NULL && database->root_dir != NULL)
     {
@@ -111,6 +112,31 @@ EXIT:
         puts("\n[+] Exiting...");
 
     return status;
+}
+
+void print_stats(database_i *database) 
+{
+    /* If exiting, print out file hit statistics */
+    if (exit_flag == true) {
+
+        size_t total_hits = 0;
+
+        puts("\n+++++++++++++++++++++++++++++++++++++");
+        puts("+                                   +");
+        puts("+       [~] Search complete         +");
+        puts("+                                   +");
+        puts("+++++++++++++++++++++++++++++++++++++");
+        for (int i = 0; i < ((database_i *)database)->size; i++) {
+            printf("[~] Substring %s file hits: %ld\n", 
+                  ((database_i *)database)->all_substrings[i]->substring, 
+                  ((database_i *)database)->all_substrings[i]->total_file_count);
+
+            total_hits += ((database_i *)database)->all_substrings[i]->total_file_count;
+        }
+        printf("[~] Total file hits: %ld\n", total_hits);
+        puts("+++++++++++++++++++++++++++++++++++++\n");
+    }
+    /*********************************************/
 }
 
 /**

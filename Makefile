@@ -17,7 +17,6 @@ all: setup lib file-finder
 .PHONY: setup
 setup:
 	@mkdir -p bin build doc header src test
-	dir_test.sh
 
 #lib will generate the libraries in the build folder.
 lib:
@@ -29,10 +28,11 @@ lib:
 file-finder:
 	gcc $(CFLAGS) $(LDFLAGS) -o bin/file-finder $(BIN) $(LDLIBS) -lm
 
-#valgrind will generate file-finder binary in bin, and run valgrind with test args. 
+#valgrind will generate file-finder binary in bin, and run valgrind with test args.
+.PHONY: valgrind 
 valgrind: lib
 	@gcc $(CFLAGS) $(LDFLAGS) -o bin/file-finder $(BIN) $(LDLIBS) -lm
-	valgrind --leak-check=full bin/file-finder test aaa bbb ccc ddd
+	valgrind --leak-check=full bin/file-finder test/ aaa bbb ccc ddd
 
 #clean will delete all build artifacts and binaries.
 clean:

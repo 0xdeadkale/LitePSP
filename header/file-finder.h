@@ -21,7 +21,9 @@ pthread_mutex_t shutdown_lock = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t dumper_cond = PTHREAD_COND_INITIALIZER;
 
-void create_sig_handler(int signum, void (*func)(int));
+void print_stats(database_i *);
+
+void create_sig_handler(int, void (*)(int));
 
 #endif /* PARSER_H */
 
