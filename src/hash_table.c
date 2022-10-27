@@ -8,7 +8,6 @@
 #include "header/includes.h"
 #include "header/hash_table.h"
 
-
 /**
  * @brief This function creates/allocates the
  * hashtable and 2D array of the substring.

@@ -5,18 +5,34 @@
 
 #include "header/file-finder.h"
 
-
 static void handler(int signum);
 
+/**
+ * @brief The main function of the program. Calls 
+ * all needed functions that contain the business logic.
+ *
+ * @param argc The number of strings pointed by argv.
+ * @param argv The array of arguments.
+ * 
+ * @return The status of how the program exits.
+ */
 int main(int argc, char *argv[])
 {
 
     int status = 0; // Error handling
-
     size_t substring_hash = 0;
+    
+    /* For initial substring insertions into hashtable */
     database_i *database = NULL;
     substring_i node = {};
 
+    puts("+++++++++++++++++++++++++++++++++++++++++");
+    puts("+                                       +");
+    puts("+ Crowdstrike Sensor SDE Coding project +");
+    puts("+                                       +");
+    puts("+++++++++++++++++++++++++++++++++++++++++\n");
+
+    /* If argc is not at least a <root dir> and <substring1>, exit */
     if (argc <= 2)
     {
         puts("[-] Invalid number of arguments");
@@ -26,7 +42,7 @@ int main(int argc, char *argv[])
         goto EXIT;
     }
 
-    /* Create hashtable for key: substring, and value: file-hits pairs.*/
+    /* Create hashtable container for storage of key (substring), and value (file-hit) pairs.*/
     database = create_hash(argc - 2);
     if (database == NULL)
     {
@@ -45,7 +61,7 @@ int main(int argc, char *argv[])
      * Could utilize a red-black tree with it's O(logn) search, or a bst.
      */
 
-    /* Insert substring nodes into hashtable */
+    /* Insert argv substring nodes into hashtable */
     for (int i = 2; i < argc; i++)
     {
         node.substring = strndup(argv[i], PATH_SIZE);  // Loop through each argv
@@ -56,10 +72,15 @@ int main(int argc, char *argv[])
         free(node.substring);
     }
 
-    create_sig_handler(SIGINT, handler); // For CTRL+C handling.
+    /* For CTRL-C handling. All other signals will be blocked */
+    create_sig_handler(SIGINT, handler);
+
+    puts("++++++++++++++++++++++++++++++++++++++++");
+    printf("[+] Starting search at '%s'\n", database->root_dir);
+    puts("++++++++++++++++++++++++++++++++++++++++\n");
 
     /* Business logic */
-    status = thread_dispatcher(database);  // In file_util.c
+    status = thread_dispatcher(database);  // --> In file_util.c
     if (status != 0) {
         puts("Threads broke");
         goto EXIT;
@@ -67,7 +88,6 @@ int main(int argc, char *argv[])
 
     /* If worker threads are done, exit gracefully */
     while(exit_flag == true || jobs == 2) {
-        printf("Jobs: %d\n", jobs);
         exit_flag = true;
         if (jobs == 0)
             break;
@@ -85,19 +105,36 @@ EXIT:
     }
     cleanup(database, true);
 
-    puts("\nExiting...");
+    if (status != 0)
+        puts("\n[-] Exiting...");
+    else
+        puts("\n[+] Exiting...");
+
     return status;
 }
 
-void create_sig_handler(int signum, void (*p_func)(int))
+/**
+ * @brief This function generates a sigaction struct
+ * used for signal handling.
+ *
+ * @param signum The signal to process in the sig handler.
+ * @param func Pointer to the signal handler.
+ */
+void create_sig_handler(int signum, void (*func)(int))
 {
-    struct sigaction sa = { .sa_handler = p_func };
+    struct sigaction sa = { .sa_handler = func };
     if (sigaction(signum, &sa, NULL) == -1)
     {
         perror("Sigaction:");
     }
 }
 
+/**
+ * @brief This function listens to any signals and
+ * processes them.
+ *
+ * @param signum The signal to process.
+ */
 static void handler(int signum)
 {
     (void)signum;
@@ -106,7 +143,10 @@ static void handler(int signum)
     {
         // Add other signals here.
         case SIGINT:
-            puts("TRL-C detected, waiting for sleep");
+            puts("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+            puts("[~] CTRL-C detected, getting ready to exit gracefully [~]");
+            puts("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+            
             exit_flag = true;
             break;
         default:

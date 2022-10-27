@@ -11,33 +11,33 @@ LIB2 = src/file_util.c
 
 BIN = src/file-finder.c build/hash_table.a build/file_util.a
 
-TEST = $(shell for x in {a..z} ; do mkdir -p test/$x/${x}{a..z} ; done)
-#PORT = 53673
-
 all: setup lib file-finder
 
-#Creates all needed directories.
+#Creates all needed directories/files for testing.
+.PHONY: setup
 setup:
 	@mkdir -p bin build doc header src test
-	echo $(TEST)
-	@mkdir test/subdir_1 test/subdir2 test/subdir_3
-	@touch test/subdir_1/aaa test/subdir2/bbb test/subdir_3/ccc
+	dir_test.sh
 
-#lib will generate the librarys in the build folder.
+#lib will generate the libraries in the build folder.
 lib:
 	@gcc $(CFLAGS) -fpic -shared -o build/hash_table.a $(LIB1)
 	@gcc $(CFLAGS) -fpic -shared -o build/file_util.a $(LIB2)
 
+#file-finder will generate file-finder binary in bin.
+.PHONY: file-finder
 file-finder:
 	gcc $(CFLAGS) $(LDFLAGS) -o bin/file-finder $(BIN) $(LDLIBS) -lm
 
-#server will generate ftp server binary in bin. 
+#valgrind will generate file-finder binary in bin, and run valgrind with test args. 
 valgrind: lib
 	@gcc $(CFLAGS) $(LDFLAGS) -o bin/file-finder $(BIN) $(LDLIBS) -lm
 	valgrind --leak-check=full bin/file-finder test aaa bbb ccc ddd
 
+#clean will delete all build artifacts and binaries.
 clean:
 	@$(RM) -rf bin/* build/*
 
+#clean_all will delete all build artifacts, binaries, and test directories/files.
 clean_all:
 	@$(RM) -rf test/* bin/* build/* 

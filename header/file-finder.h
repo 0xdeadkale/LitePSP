@@ -1,6 +1,6 @@
 /** @file parser.h
  *
- * @brief The private header file for parser.c.
+ * @brief The header file for parser.c.
  */
 
 #ifndef PARSER_H
