@@ -19,13 +19,14 @@ setup:
 	@mkdir -p bin build doc header src test
 
 #lib will generate the libraries in the build folder.
+.PHONY: lib
 lib:
 	@gcc $(CFLAGS) -fpic -shared -o build/hash_table.a $(LIB1)
 	@gcc $(CFLAGS) -fpic -shared -o build/file_util.a $(LIB2)
 
 #file-finder will generate file-finder binary in bin.
 .PHONY: file-finder
-file-finder:
+file-finder: lib
 	gcc $(CFLAGS) $(LDFLAGS) -o bin/file-finder $(BIN) $(LDLIBS) -lm
 
 #valgrind will generate file-finder binary in bin, and run valgrind with test args.
@@ -35,9 +36,11 @@ valgrind: lib
 	valgrind --leak-check=full bin/file-finder test/ aaa bbb ccc ddd
 
 #clean will delete all build artifacts and binaries.
+.PHONY: clean
 clean:
 	@$(RM) -rf bin/* build/*
 
 #clean_all will delete all build artifacts, binaries, and test directories/files.
+.PHONY: clean_all
 clean_all:
 	@$(RM) -rf test/* bin/* build/* 

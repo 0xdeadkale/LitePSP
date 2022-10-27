@@ -4,12 +4,18 @@
 .SH NAME
 file-finder - Program to parse from a root directory downwards and search for substrings in all filenames.
 .SH SYNOPSIS
-./file-finder <dir> <substring1>[<substring2> [<substring3>]...]
+./bin/file-finder <dir> <substring1>[<substring2> [<substring3>]...]
 .SH DESCRIPTION
 ticker is a program that reads a root directory and all following substring arguments, and parses downward through the root directory in search of substrings contained in file names.
 .SH OPTIONS
 [DIR] The root directory to start
 
 [substring...] Any number of substrings to parse (up to ARG_MAX limit)
+.SH REQUIREMENTS
+Unix/POSIX compliant system with both 'make' and 'gcc' installed. Tested on an fresh Ubuntu 22.04
+.SH COMPILATION
+With the Makefile in the present working directory, type 'make file-finder' to compile program.
+.SH TESTING
+There is a bash shell (dir_test.sh) that generates directories and files. Running 'make valgrind' will run the program with the default arguments of test aaa bbb ccc ddd.
 .SH AUTHOR
-Michael Miano (michael.miano.dev@gmail.cp,)
+Michael Miano (michael.miano.dev@gmail.com)
