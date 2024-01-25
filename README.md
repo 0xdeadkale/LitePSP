@@ -1,1 +1,1 @@
-Lightweight text enumerator
+Lightweight file enumerator
