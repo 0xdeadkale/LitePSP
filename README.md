@@ -1,1 +1,1 @@
-Light Weight text enumerator
+Lightweight text enumerator
