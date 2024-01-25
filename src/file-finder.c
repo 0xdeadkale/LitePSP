@@ -1,6 +1,6 @@
 /** @file file-finder.c
  *
- * @brief The driver file for CrowdStike's Sensor SDE Coding Project.
+ * @brief The driver file.
  */
 
 #include "header/file-finder.h"
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
     puts("+++++++++++++++++++++++++++++++++++++++++");
     puts("+                                       +");
-    puts("+ Crowdstrike Sensor SDE Coding project +");
+    puts("+              File Finder              +");
     puts("+                                       +");
     puts("+++++++++++++++++++++++++++++++++++++++++\n");
 
