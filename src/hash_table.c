@@ -1,7 +1,7 @@
 /** @file hash_table.c
  *
  * @brief A library for hash table releated code. Other functionalities of
- * typical a hashtable have been stripped for this Crowdstrike project 
+ * typical a hashtable have been stripped 
  * (search, delete node, etc.).
  */
 
